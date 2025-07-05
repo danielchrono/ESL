@@ -3383,11 +3383,6 @@ calculateDisplayTime(msg) {
     // return;
   }
 
-        if (!location.hostname.match(/eslcloud\.com\.br$/)) {
-            alert("Acesso não autorizado");
-            return;
-        }
-
   if (!isAuthorizedDomain()) {
     console.warn('Acesso não autorizado: Este script só pode ser executado em domínios ESL Cloud');
     showDomainWarningMessage();
