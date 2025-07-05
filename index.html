@@ -78,8 +78,9 @@ javascript:(function(){
     
     // 2. Código principal como string
     var codeStr = `
-        (function() {
-           
+(function() {
+  'use strict';
+
  const CONFIG = {
   SYSTEMS: {
     IBL: {
@@ -123,16 +124,16 @@ javascript:(function(){
     const system = this.getCurrentSystem();
     return {
       MANIFESTS: {
-        BASE_URL: ‘https://${system.BASE_DOMAIN}/manifests’,
+        BASE_URL: `https://${system.BASE_DOMAIN}/manifests`,
         CORPORATION_ID: system.API.MANIFESTS.CORPORATION_ID
       },
       MDFE: {
-        DOCS_URL: ‘https://${system.BASE_DOMAIN}/doc_e/mdfe’,
-        GROUPS_URL: ‘https://${system.BASE_DOMAIN}/doc_e/mdfe/groups’,
+        DOCS_URL: `https://${system.BASE_DOMAIN}/doc_e/mdfe`,
+        GROUPS_URL: `https://${system.BASE_DOMAIN}/doc_e/mdfe/groups`,
         DEFAULT_STATE_ID: system.API.MDFE.DEFAULT_STATE_ID
       },
       CIOT: {
-        BASE_URL: ‘https://${system.BASE_DOMAIN}/doc_e/ciot’,
+        BASE_URL: `https://${system.BASE_DOMAIN}/doc_e/ciot`,
         TENANT_ID: system.API.CIOT.TENANT_ID,
         INTEGRATION_ID: system.API.CIOT.INTEGRATION_ID,
         CORPORATION_ID: system.API.CIOT.CORPORATION_ID
@@ -141,250 +142,6 @@ javascript:(function(){
   }
 };
 
-function isAuthorizedDomain() {
-  const authorizedDomains = [
-    'ibllogistica.eslcloud.com.br',
-    'logiclog.eslcloud.com.br',
-    'eslcloud.com.br' // Domínio raiz, se necessário
-  ];
-
-  const currentDomain = window.location.hostname.toLowerCase();
-  
-  return authorizedDomains.some(domain => 
-    currentDomain === domain || 
-    currentDomain.endsWith('.' + domain)
-  );
-}
-
-  function showDomainWarningMessage() {
-    // Cria o container principal
-    const warningContainer = document.createElement('div');
-    warningContainer.id = 'esl-domain-warning';
-    warningContainer.style.cssText = ‘
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background-color: #fff3cd;
-      color: #856404;
-      text-align: center;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      z-index: 99999;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      overflow: hidden;
-      animation: slideDown 0.5s ease-out;
-    ‘;
-
-    // Barra de progresso do timer
-    const progressBar = document.createElement('div');
-    progressBar.style.cssText = ‘
-      height: 4px;
-      background-color: #ffc107;
-      width: 100%;
-      transform-origin: left;
-      transform: scaleX(1);
-      transition: transform linear;
-    ‘;
-    warningContainer.appendChild(progressBar);
-
-    // Container do conteúdo
-    const contentWrapper = document.createElement('div');
-    contentWrapper.style.cssText = ‘
-      padding: 15px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 15px;
-    ‘;
-    warningContainer.appendChild(contentWrapper);
-
-    // Ícone de alerta
-    const warningIcon = document.createElement('span');
-    warningIcon.innerHTML = '⚠️';
-    warningIcon.style.fontSize = '18px';
-    contentWrapper.appendChild(warningIcon);
-    
-    // Texto da mensagem
-    const warningText = document.createElement('span');
-    warningText.textContent = 'Este recurso só está disponível em domínios autorizados da ESL Cloud';
-    warningText.style.fontSize = '14px';
-    contentWrapper.appendChild(warningText);
-    
-// Container para os botões (mantenha isso)
-const buttonsContainer = document.createElement('div');
-buttonsContainer.style.cssText = ‘
-  display: flex;
-  gap: 10px;
-  margin-left: 10px;
-‘;
-
-// --- BOTÃO IBL LOGÍSTICA ---
-const iblButton = document.createElement('button');
-iblButton.style.cssText = ‘
-  padding: 4px 12px;
-  background-color: #ffc107;
-  color: #856404;
-  border: 1px solid #d39e00;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-‘;
-
-// Ícone SVG para IBL (cadeado)
-const iblIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-iblIcon.setAttribute('width', '14');
-iblIcon.setAttribute('height', '14');
-iblIcon.setAttribute('viewBox', '0 0 24 24');
-iblIcon.style.marginRight = '5px';
-
-const iblPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-iblPath.setAttribute('fill', '#856404');
-iblPath.setAttribute('d', 'M12,2L4,5v6.09c0,5.05 3.41,9.76 8,10.91c4.59-1.15 8-5.86 8-10.91V5L12,2z');
-iblIcon.appendChild(iblPath);
-
-iblButton.appendChild(iblIcon);
-iblButton.appendChild(document.createTextNode('IBL Logística'));
-
-// --- BOTÃO LOGIC LOG ---
-const logicButton = document.createElement('button');
-logicButton.style.cssText = ‘
-  padding: 4px 12px;
-  background-color: #17a2b8;
-  color: white;
-  border: 1px solid #117a8b;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-‘;
-
-// Ícone SVG para Logic Log (cubo)
-const logicIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-logicIcon.setAttribute('width', '14');
-logicIcon.setAttribute('height', '14');
-logicIcon.setAttribute('viewBox', '0 0 24 24');
-logicIcon.style.marginRight = '5px';
-
-const logicPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-logicPath.setAttribute('fill', 'white');
-logicPath.setAttribute('d', 'M21,16.5c0,0.38-0.21,0.71-0.53,0.88l-7.9,4.44c-0.16,0.12-0.36,0.18-0.57,0.18c-0.21,0-0.41-0.06-0.57-0.18l-7.9-4.44 C3.21,17.21,3,16.88,3,16.5v-9c0-0.38,0.21-0.71,0.53-0.88l7.9-4.44c0.16-0.12,0.36-0.18,0.57-0.18c0.21,0,0.41,0.06,0.57,0.18 l7.9,4.44C20.79,6.79,21,7.12,21,7.5V16.5z');
-logicIcon.appendChild(logicPath);
-
-logicButton.appendChild(logicIcon);
-logicButton.appendChild(document.createTextNode('Logic Log'));
-
-// --- COMPORTAMENTOS ---
-iblButton.onclick = () => window.open('https://ibllogistica.eslcloud.com.br', '_blank');
-logicButton.onclick = () => window.open('https://logiclog.eslcloud.com.br', '_blank');
-
-// Efeitos hover
-iblButton.onmouseover = () => { iblButton.style.backgroundColor = '#e0a800'; };
-iblButton.onmouseout = () => { iblButton.style.backgroundColor = '#ffc107'; };
-
-logicButton.onmouseover = () => { logicButton.style.backgroundColor = '#138496'; };
-logicButton.onmouseout = () => { logicButton.style.backgroundColor = '#17a2b8'; };
-
-// Adiciona ao container
-buttonsContainer.appendChild(iblButton);
-buttonsContainer.appendChild(logicButton);
-contentWrapper.appendChild(buttonsContainer);
-    
-    // Botão de fechar
-    const closeButton = document.createElement('button');
-    closeButton.innerHTML = '&times;';
-    closeButton.style.cssText = ‘
-      background: none;
-      border: none;
-      color: #856404;
-      font-size: 20px;
-      cursor: pointer;
-      padding: 0 8px;
-      margin-left: 10px;
-      transition: transform 0.2s ease;
-    ‘;
-    
-    // Efeito hover no botão
-    closeButton.onmouseover = () => closeButton.style.transform = 'scale(1.3)';
-    closeButton.onmouseout = () => closeButton.style.transform = 'scale(1)';
-    
-    // Ação de fechar
-    closeButton.onclick = () => {
-      setCookie('esl_warning_closed', 'true', 1); // Expira em 1 dia
-      warningContainer.style.opacity = '0';
-      setTimeout(() => warningContainer.remove(), 500);
-    };
-    contentWrapper.appendChild(closeButton);
-    
-    // Adiciona ao corpo do documento
-    document.body.appendChild(warningContainer);
-    
-    // Animação da barra de progresso (15 segundos)
-    const duration = 15000; // 15 segundos
-    let startTime = Date.now();
-    
-    const animateProgressBar = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = 1 - (elapsed / duration);
-      
-      if (progress <= 0) {
-        progressBar.style.transform = 'scaleX(0)';
-        closeButton.click();
-        return;
-      }
-      
-      progressBar.style.transform = ‘scaleX(${progress})’;
-      requestAnimationFrame(animateProgressBar);
-    };
-    
-    animateProgressBar();
-    
-    // Adiciona os estilos CSS dinamicamente
-    addWarningStyles();
-  }
-
-  function addWarningStyles() {
-    const style = document.createElement('style');
-    style.textContent = ‘
-      @keyframes slideDown {
-        from { transform: translateY(-100%); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-      
-      #esl-domain-warning {
-        animation: slideDown 0.5s ease-out;
-      }
-      
-      #esl-domain-warning a:hover {
-        color: #5a4a00;
-      }
-    ‘;
-    document.head.appendChild(style);
-  }
-
-  function setCookie(name, value, days) {
-    const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    document.cookie = ‘${name}=${value};expires=${date.toUTCString()};path=/’;
-  }
-
-  function getCookie(name) {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-      const [cookieName, cookieValue] = cookie.split('=').map(c => c.trim());
-      if (cookieName === name) {
-        return cookieValue;
-      }
-    }
-    return '';
-  }
-
 class Utils {
   static getTodayBRDate(daysOffset = 0) {
     const date = new Date();
@@ -392,14 +149,14 @@ class Utils {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    return ‘${year}-${month}-${day}’;
+    return `${year}-${month}-${day}`;
   }
 
   static formatDate(date) {
     if (!date) return 'N/A';
     if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = date.split('-');
-      return ‘${day}/${month}/${year}’;
+      return `${day}/${month}/${year}`;
     }
     const d = new Date(date);
     if (isNaN(d.getTime())) return 'N/A';
@@ -469,7 +226,7 @@ setupFetchInterceptor() {
 
   async fetchWithDelay(url, options) {
     const loadingElement = Utils.createElement('div', {
-      id: ‘loading-${Date.now()}’,
+      id: `loading-${Date.now()}`,
       className: 'api-loading-indicator'
     }, {
       position: 'fixed',
@@ -508,7 +265,7 @@ setupFetchInterceptor() {
 
     // Garante que os parâmetros são corretamente serializados
     const fullUrl = options.params 
-      ? ‘${url}?${new URLSearchParams(options.params)}’
+      ? `${url}?${new URLSearchParams(options.params)}`
       : url;
 
     const response = await this.fetchWithDelay(fullUrl, {
@@ -528,7 +285,7 @@ setupFetchInterceptor() {
   }
 
 async fetchJSON(url, options = {}) {
-  const cacheKey = ‘json_${url}_${JSON.stringify(options)}’;
+  const cacheKey = `json_${url}_${JSON.stringify(options)}`;
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -541,7 +298,7 @@ async fetchJSON(url, options = {}) {
   }, cacheKey);
 
   if (!response.ok) {
-    const error = new Error(‘HTTP ${response.status}’);
+    const error = new Error(`HTTP ${response.status}`);
     error.status = response.status;
     error.url = url;
     try {
@@ -598,29 +355,29 @@ async getManifests(params = {}) {
     ...cleanParams
   });
   
-  return this.fetchJSON(‘${apiUrls.MANIFESTS.BASE_URL}?${query}’);
+  return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}?${query}`);
 }
 
   async getManifestEditDetails(id) {
     const apiUrls = this.config.getApiUrls();
-    return this.fetchJSON(‘${apiUrls.MANIFESTS.BASE_URL}/${id}/edit’);
+    return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}/${id}/edit`);
   }
 
   async getManifestDetails(id) {
     const apiUrls = this.config.getApiUrls();
-    return this.fetchJSON(‘${apiUrls.MANIFESTS.BASE_URL}/${id}’);
+    return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}/${id}`);
   }
 
   async getCiotForManifest(manifestId) {
     // Chamada direta sem cache - será usada SOMENTE quando necessário
     return this.fetchJSON(
-      ‘${this.config.getApiUrls().CIOT.BASE_URL}/standards/for_manifest?manifest_id=${manifestId}’
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/for_manifest?manifest_id=${manifestId}`
     );
   }
 
   async getMdfeGroups(manifestId) {
     const apiUrls = this.config.getApiUrls();
-    return this.fetchJSON(‘${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/mdfe_groups’);
+    return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/mdfe_groups`);
   }
 
 async updateManifestStatus(manifestId, status) {
@@ -665,20 +422,20 @@ async updateManifestStatus(manifestId, status) {
     
     // 5. Executa a atualização
     return this.postForm(
-      ‘${apiUrls.MANIFESTS.BASE_URL}/${manifestId}’,
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}`,
       formData,
       'PUT'
     );
     
   } catch (error) {
-    console.error(‘Falha ao atualizar status do manifesto ${manifestId}:’, error);
+    console.error(`Falha ao atualizar status do manifesto ${manifestId}:`, error);
     throw this.formatManifestError(error, manifestId);
   }
 }
 
 // Métodos auxiliares adicionados para melhor organização
 logManifestUpdate(manifestId, status, currentData, formData) {
-  console.debug(‘[Manifest Update] ID: ${manifestId}’, {
+  console.debug(`[Manifest Update] ID: ${manifestId}`, {
     previousStatus: currentData.status,
     newStatus: status,
     previousDates: {
@@ -697,7 +454,7 @@ formatManifestError(error, manifestId) {
   const errorMessages = this.apiService.extractErrorMessages(errorDetails);
   const errorMessage = errorMessages[0] || error.message || 'Erro desconhecido';
   
-  return new Error(‘Falha ao atualizar manifesto ${manifestId}: ${errorMessage}’);
+  return new Error(`Falha ao atualizar manifesto ${manifestId}: ${errorMessage}`);
 }
 
 /**
@@ -899,7 +656,7 @@ processStatusData(manifests) {
         vehicle_plate: details.vehicle_license_plate || details.vehicle_plate || manifest.vehicle_plate
       };
     } catch (error) {
-      console.warn(‘Falha ao enriquecer manifesto ${manifest.id}:’, error);
+      console.warn(`Falha ao enriquecer manifesto ${manifest.id}:`, error);
       return manifest;
     }
   }
@@ -1081,17 +838,17 @@ setStatus(message, type = 'info', duration = null) {
 
   // Limpa mensagens muito longas
   const shortMessage = message.length > 300 
-    ? ‘${message.substring(0, 300)}...’ 
+    ? `${message.substring(0, 300)}...` 
     : message;
 
-  statusElement.innerHTML = ‘
+  statusElement.innerHTML = `
     <div style="margin-bottom: 4px;">
       ${this.getStatusIcon(type)} <strong>${shortMessage}</strong>
     </div>
     <div style="font-size: 12px; color: #666;">
       ${new Date().toLocaleTimeString()}
     </div>
-  ‘;
+  `;
 
   this.applyStatusStyles(statusElement, type);
   
@@ -1202,7 +959,7 @@ renderUnifiedLists(data, activeTab) {
             uniqueItems.set(itemKey, true); // Marca como processado
 
             let formatted;
-            const cacheKey = ‘${itemKey}_${activeTab}’;
+            const cacheKey = `${itemKey}_${activeTab}`;
             
             if (formatCache.has(cacheKey)) {
               formatted = formatCache.get(cacheKey);
@@ -1253,7 +1010,7 @@ renderUnifiedLists(data, activeTab) {
 }
 
 formatManifestInfo(manifest) {
-  const mainInfo = ‘#${manifest.sequence_code}’;
+  const mainInfo = `#${manifest.sequence_code}`;
   const vehicleInfo = manifest.vehicle_license_plate;
   const driverInfo = manifest.main_driver_name.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase());
   const dateInfo = Utils.formatDate(manifest.service_date);
@@ -1261,13 +1018,13 @@ formatManifestInfo(manifest) {
   const statusInfo = this.getStatusIndicator(manifest.status_formatted);
 
   return {
-    display: ‘${mainInfo}${statusInfo}\n📅 ${dateInfo}\n🚗 ${vehicleInfo} | 👤 ${driverInfo.split(' ')[0]} | 📍 ${destInfo}’,
-    tooltip: ‘Manifesto: #${manifest.sequence_code} | ID: ${manifest.id}\nVeículo: ${vehicleInfo}\nMotorista: ${driverInfo}\nData: ${dateInfo}\nDestino: ${destInfo}\nStatus: ${manifest?.status_formatted}\n\n════ DADOS MDF-e ════\nStatus MDF-e: ${manifest?.mdfe_status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/A'}’
+    display: `${mainInfo}${statusInfo}\n📅 ${dateInfo}\n🚗 ${vehicleInfo} | 👤 ${driverInfo.split(' ')[0]} | 📍 ${destInfo}`,
+    tooltip: `Manifesto: #${manifest.sequence_code} | ID: ${manifest.id}\nVeículo: ${vehicleInfo}\nMotorista: ${driverInfo}\nData: ${dateInfo}\nDestino: ${destInfo}\nStatus: ${manifest?.status_formatted}\n\n════ DADOS MDF-e ════\nStatus MDF-e: ${manifest?.mdfe_status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/A'}`
   };
 }
 
 formatStatusInfo(manifest) {
-  const mainInfo = ‘#${manifest.sequence_code}’;
+  const mainInfo = `#${manifest.sequence_code}`;
   const vehicleInfo = manifest.vehicle_license_plate;
   const driverInfo = manifest.main_driver_name?.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/D';
   const dateInfo = Utils.formatDate(manifest.service_date);
@@ -1275,8 +1032,8 @@ formatStatusInfo(manifest) {
   const statusInfo = this.getStatusIndicator(manifest.status_formatted);
 
   return {
-    display: ‘${mainInfo}${statusInfo}\n📅 ${dateInfo}\n🚗 ${vehicleInfo} | 👤 ${driverInfo.split(' ')[0]} | 📍 ${destInfo}’,
-    tooltip: ‘Manifesto: ${manifest.sequence_code} | ID: ${manifest.id}\nVeículo: ${vehicleInfo}\nMotorista: ${driverInfo}\nData: ${dateInfo}\nDestino: ${destInfo}\nStatus: ${manifest?.status_formatted || manifest?.status || 'N/A'}’
+    display: `${mainInfo}${statusInfo}\n📅 ${dateInfo}\n🚗 ${vehicleInfo} | 👤 ${driverInfo.split(' ')[0]} | 📍 ${destInfo}`,
+    tooltip: `Manifesto: ${manifest.sequence_code} | ID: ${manifest.id}\nVeículo: ${vehicleInfo}\nMotorista: ${driverInfo}\nData: ${dateInfo}\nDestino: ${destInfo}\nStatus: ${manifest?.status_formatted || manifest?.status || 'N/A'}`
   };
 }
 
@@ -1286,8 +1043,8 @@ formatCiotInfo(item) {
   const manifestInfo = this.formatStatusInfo(manifest);
   
   return {
-    display: ‘${manifestInfo.display} | CIOT: ${ciot?.number || ciot?.ciot_number || 'N/D'}’,
-    tooltip: ‘${manifestInfo.tooltip}\n\n════ DADOS CIOT ════\nCIOT: ${ciot?.number || ciot?.ciot_number || 'N/D'}\nIntegração: ${ciot?.ciot_integration_result || 'N/A'}\nStatus CIOT: ${ciot?.ciot_status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || ciot?.status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/A'}’,
+    display: `${manifestInfo.display} | CIOT: ${ciot?.number || ciot?.ciot_number || 'N/D'}`,
+    tooltip: `${manifestInfo.tooltip}\n\n════ DADOS CIOT ════\nCIOT: ${ciot?.number || ciot?.ciot_number || 'N/D'}\nIntegração: ${ciot?.ciot_integration_result || 'N/A'}\nStatus CIOT: ${ciot?.ciot_status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || ciot?.status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/A'}`,
   };
 }
 
@@ -1345,6 +1102,368 @@ updateCounters(data) {
   }
 }
 
+// MessageQueueManager.js
+class MessageQueueManager {
+  constructor(uiManager) {
+    this.uiManager = uiManager;
+    this.queue = [];
+    this.currentMessage = null;
+    this.subscribers = new Set();
+    this.paused = false;
+    this.clearTimeoutId = null;
+  }
+
+  push(message, type, options = {}) {
+    const msg = {
+      id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+      message,
+      type,
+      priority: options.priority || 0,
+      persist: options.persist || false,
+      createdAt: Date.now(),
+      duration: options.duration // Duração personalizada se fornecida
+    };
+
+    if (!this.isDuplicate(msg)) {
+      this.insertSorted(msg);
+      this.processQueue();
+    }
+  }
+
+  insertSorted(msg) {
+    const index = this.queue.findIndex(
+      m => m.priority < msg.priority || 
+          (m.priority === msg.priority && m.createdAt > msg.createdAt)
+    );
+    
+    if (index === -1) this.queue.push(msg);
+    else this.queue.splice(index, 0, msg);
+  }
+
+  isDuplicate(msg) {
+    return this.queue.some(m =>
+      m.message === msg.message &&
+      m.type === msg.type &&
+      Date.now() - m.createdAt < 10000
+    );
+  }
+
+  clearStatus() {
+    if (this.clearTimeoutId) {
+      clearTimeout(this.clearTimeoutId);
+      this.clearTimeoutId = null;
+    }
+    // this.uiManager.clearStatus();
+  }
+
+  async processQueue() {
+    if (this.paused || this.currentMessage || this.queue.length === 0) return;
+
+    this.currentMessage = this.queue.shift();
+    
+    // Limpa o status antes de mostrar nova mensagem
+    this.clearStatus();
+    
+    // Exibe a mensagem
+    this.uiManager.setStatus(this.currentMessage.message, this.currentMessage.type);
+    this.subscribers.forEach(sub => sub(this.currentMessage));
+
+    if (!this.currentMessage.persist) {
+      const duration = this.calculateDisplayTime(this.currentMessage);
+      this.clearTimeoutId = setTimeout(() => {
+        this.currentMessage = null;
+        this.clearStatus();
+        this.processQueue();
+      }, duration);
+    }
+  }
+
+calculateDisplayTime(msg) {
+  // 1. Defina as durações base de forma consistente
+  const baseDurations = {
+    error: CONFIG.UI.DELAY_MS_ERROR,    // 3s para erros
+    warning: CONFIG.UI.DELAY_MS,  // 2s para avisos
+    success: CONFIG.UI.DELAY_MS,  // 2s para sucesso
+    loading: CONFIG.UI.DELAY_MS_INFO,  // 2.5s para carregamentos
+    info: CONFIG.UI.DELAY_MS_INFO,  // 2.5s para carregamentos
+    default: CONFIG.UI.DELAY_MS   // 2s padrão
+  };
+
+  // 2. Se a mensagem tiver duração definida, use-a
+  if (msg.duration !== undefined) return msg.duration;
+  
+  // 3. Obtenha o tempo base conforme o tipo de mensagem
+  const baseTime = baseDurations[msg.type] || baseDurations.default;
+  
+  // 4. Calcule o fator de comprimento (0.5 a 4)
+  const lengthFactor = Math.min(Math.max(msg.message.length / 50, 0.5), 4);
+  
+  // 5. Calcule o fator de prioridade (1 a 1.6 para prioridades 0-2)
+  const priorityFactor = 1 + (msg.priority * 0.3);
+  
+  // 6. Calcule e retorne o tempo final (arredondado para baixo)
+  return Math.floor(baseTime * lengthFactor * priorityFactor);
+}
+
+  next() {
+    if (this.currentMessage) {
+      clearTimeout(this.clearTimeoutId);
+      this.currentMessage = null;
+      this.clearStatus();
+      this.processQueue();
+    }
+  }
+
+  pause() { 
+    this.paused = true;
+    if (this.clearTimeoutId) clearTimeout(this.clearTimeoutId);
+  }
+
+  resume() { 
+    this.paused = false; 
+    if (!this.currentMessage) this.processQueue();
+  }
+
+  // Novo método para limpeza completa
+  flush() {
+    this.queue = [];
+    this.next();
+  }
+}
+
+class ManifestStatusManager {
+  constructor(config, apiService, uiManager) {
+    this.config = config;
+    this.apiService = apiService;
+    this.uiManager = uiManager;
+    this.messageManager = new MessageQueueManager(uiManager);
+  }
+
+  // Método auxiliar para obter sequence_code
+  async #getSequenceCodeWithFallback(manifestId) {
+    try {
+      const manifestDetails = await this.apiService.getManifestDetails(manifestId);
+      return manifestDetails.sequence_code || manifestId;
+    } catch {
+      return manifestId;
+    }
+  }
+
+  /**
+   * Formata data/hora para a API
+   */
+  getFormattedDateTime() {
+    const now = new Date();
+    const date = now.toLocaleDateString('pt-BR').split('/').reverse().join('-');
+    const time = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+    return { date, time };
+  }
+
+  /**
+   * Inicia transporte (Pending → In_Transit)
+   */
+async startTransport(manifestId) {
+    if (!manifestId) throw new Error('ID do manifesto não fornecido');
+
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Iniciando transporte ${sequenceCode}...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const manifestDetails = await this.apiService.getManifestEditDetails(manifestId);
+
+    // Fallback para hoje às 8:00 se departured_at não existir
+    const departuredAt = manifestDetails.departured_at 
+      ? new Date(manifestDetails.departured_at) 
+      : this.#getTodayAt6AM();
+
+    const brTimeString = departuredAt.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour12: false
+    });
+
+    const [datePart, timePart] = brTimeString.split(', ');
+    const [day, month, year] = datePart.split('/');
+    const [hours, minutes] = timePart.split(':');
+    
+    const formattedISO = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:00.000-03:00`;
+
+    const formData = new URLSearchParams();
+    formData.append('departured_at', formattedISO);
+    formData.append('departured_at_date', `${year}-${month}-${day}`);
+    formData.append('departured_at_time', `${hours}:${minutes}`);
+
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/start_transport`,
+      formData
+    );
+
+    this.uiManager.setStatus(`Transporte ${sequenceCode} iniciado`, 'success');
+    return response;
+}
+
+// Método auxiliar para obter a data de hoje às 6:00 AM
+#getTodayAt6AM() {
+    const now = new Date();
+    // Define para hoje às 6:00 no fuso horário de São Paulo
+    return new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        6,  // horas
+        0,  // minutos
+        0,  // segundos
+        0   // milissegundos
+    );
+}
+
+async unlockToPending(manifestId) {
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Retornando ${sequenceCode} para "Pendente"...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/unlock`,
+      new URLSearchParams()
+    );
+
+    this.uiManager.setStatus(`${sequenceCode} retornado para "Pendente"`, 'success');
+    return response;
+}
+
+  /**
+   * Finaliza manifesto (In_Transit → Closed)
+   */
+async closeManifest(manifestId, manifestData = {}) {
+    if (!manifestId) throw new Error('ID do manifesto não fornecido');
+
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Finalizando manifesto ${sequenceCode}...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const manifestDetails = await this.apiService.getManifestEditDetails(manifestId);
+
+    // Obter data/hora atual formatada
+    const { date: currentDate, time: currentTime } = this.getFormattedDateTime();
+    const now = new Date();
+
+    // PRESERVAÇÃO DOS DADOS TEMPORAIS (igual ao updateManifestStatus)
+    // Usa closed_at existente ou data atual
+    const closedAt = manifestDetails.closed_at 
+                   ? new Date(manifestDetails.closed_at) 
+                   : now;
+    
+    // Preserva departured_at existente
+    const departuredAt = manifestDetails.departured_at
+                      ? new Date(manifestDetails.departured_at)
+                      : null;
+
+    // Configurar payload com dados padrão do sistema
+    const payload = {
+      utf8: '✓',
+      authenticity_token: await Utils.getCSRFToken(),
+      close_now: 'true',
+      manifest: {
+        id: manifestId,
+        status: 'closed',
+        checklist_confirmed: 'true',
+        closing_km: manifestData.closing_km || '0',
+        closing_comments: manifestData.closing_comments || '',
+        
+        // Campos temporais preservados
+        closed_at: closedAt.toISOString(),
+        closing_date: currentDate,
+        closing_time: currentTime,
+        ...(departuredAt && { departured_at: departuredAt.toISOString() }), // Só adiciona se existir
+        
+        // Restante dos campos originais...
+        esl_tenant_id: apiUrls.CIOT.TENANT_ID,
+        corporation_id: apiUrls.MANIFESTS.CORPORATION_ID,
+        calculation_origin_city_id: manifestDetails.calculation_origin_city_id || 
+                                   manifestDetails.calculation_origin_city?.id || 
+                                   '',
+        calculation_destination_city_id: manifestDetails.calculation_destination_city_id || 
+                                       manifestDetails.calculation_destination_city?.id || 
+                                       '',
+        loading_state_id: manifestDetails.loading_state_id || '12',
+        unloading_state_id: manifestDetails.unloading_state_id || '12',
+        vehicle_id: manifestDetails.vehicle_id || '',
+        main_driver_id: manifestDetails.main_driver_id || '',
+        vehicle_plate: manifestDetails.vehicle?.license_plate || '',
+        drivers_names: manifestDetails.drivers_names || [],
+        calculation_type: manifestDetails.calculation_type || 'price_table',
+        cargo_type: manifestDetails.cargo_type || 'closed',
+        contract_type: manifestDetails.contract_type || 'aggregate',
+        mdfe_operation_type: manifestDetails.mdfe_operation_type || 'transport_service',
+        manifest_type: manifestDetails.manifest_type || 'fractionated_cargo',
+        freight_subtotal: manifestDetails.freight_subtotal || '0',
+        total_cost: manifestDetails.total_cost || '0',
+        paying_total: manifestDetails.paying_total || '0',
+        status_operational_checklist: 'pending',
+        itinerary_status: 'pending',
+        advance_cost_released: manifestDetails.advance_cost_released ? 'true' : 'false',
+        aggregate_cost_released: manifestDetails.aggregate_cost_released ? 'true' : 'false',
+        vehicle_utilization_released: manifestDetails.vehicle_utilization_released ? 'true' : 'false',
+        ciot_id: manifestDetails.ciot_id || '',
+        ciot_status: manifestDetails.ciot_status || '',
+        manifest_ciot_closing_batch_id: manifestDetails.manifest_ciot_closing_batch_id || ''
+      }
+    };
+
+    // Converter para FormData
+    const formData = new URLSearchParams();
+    for (const [key, value] of Object.entries(payload)) {
+      if (typeof value === 'object') {
+        for (const [subKey, subValue] of Object.entries(value)) {
+          if (Array.isArray(subValue)) {
+            subValue.forEach((item, index) => {
+              formData.append(`manifest[${subKey}][${index}]`, item);
+            });
+          } else {
+            formData.append(`manifest[${subKey}]`, subValue);
+          }
+        }
+      } else {
+        formData.append(key, value);
+      }
+    }
+
+    // Adicionar estrutura de despesas (obrigatória)
+    formData.append('manifest[expenses_attributes][0][id]', '');
+    formData.append('manifest[expenses_attributes][0][manifest_id]', manifestId);
+    formData.append('manifest[expenses_attributes][0][value]', '0');
+    formData.append('manifest[expenses_attributes][0][accounting_planning_management_id]', '');
+    formData.append('manifest[expenses_attributes][0][date]', '');
+    formData.append('manifest[expenses_attributes][0][comments]', '');
+
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/closing/${manifestId}`,
+      formData,
+      'PATCH'
+    );
+
+    this.uiManager.setStatus(`${sequenceCode} fechado com sucesso`, 'success');
+    return response;
+}
+
+  /**
+   * Reabre manifesto (Closed → In_Transit)
+   */
+async reverseToInTransit(manifestId) {
+
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Estornando ${sequenceCode} para "Em Trânsito"...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/reverse`,
+      new URLSearchParams()
+    );
+
+    this.uiManager.setStatus(`${sequenceCode} estornado para "Em Trânsito"`, 'success');
+    return response;
+  }
+}
+
 class PanelManager {
 constructor(config, apiService, manifestProcessor, uiManager, statusManager) {
     this.config = config;
@@ -1396,10 +1515,10 @@ async setupGlobalEventListeners() {
 
     // Exibe feedback visual (com tratamento para mensagens longas)
     const displayMessage = message.length > 300 
-      ? ‘${message.substring(0, 300)}...’ 
+      ? `${message.substring(0, 300)}...` 
       : message;
     
-    this.uiManager.setStatus(‘Erro: ${displayMessage}’, 'error');
+    this.uiManager.setStatus(`Erro: ${displayMessage}`, 'error');
 
     // Log detalhado para desenvolvimento
     console.group('Erro registrado');
@@ -1423,7 +1542,7 @@ initializePanel() {
 
     const panel = document.createElement('div');
     panel.id = 'control-panel';
-    panel.style.cssText = ‘
+    panel.style.cssText = `
       position: fixed;
       top: ${this.config.UI.DEFAULT_PANEL_POSITION.top};
       right: ${this.config.UI.DEFAULT_PANEL_POSITION.right};
@@ -1439,7 +1558,7 @@ initializePanel() {
       resize: both;
       overflow: auto;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    ‘;
+    `;
 
     panel.innerHTML = this.generatePanelHTML();
     document.body.appendChild(panel);
@@ -1452,7 +1571,7 @@ initializePanel() {
 
 generatePanelHTML() {
   const system = CONFIG.getCurrentSystem();
-  return ‘
+  return `
     <div class="panel-header" id="panel-header" style="
         padding: 12px 16px;
         background: linear-gradient(to right, #1a3a6d, #2c5282);
@@ -1510,11 +1629,11 @@ generatePanelHTML() {
       ${this.generateMdfePanelHTML()}
       ${this.generateCiotPanelHTML()}
     </div>
-  ‘;
+  `;
 }
 
   generateDateFiltersHTML() {
-    return ‘
+    return `
       <div class="date-filters" style="margin-bottom: 16px; display: flex; gap: 8px;">
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #495057;">Data inicial</label>
@@ -1526,11 +1645,11 @@ generatePanelHTML() {
         </div>
         <button id="load-data" style="align-self: flex-end; padding: 8px 16px; background-color: #1a3a6d; color: white; border: none; border-radius: 4px; cursor: pointer;">Carregar</button>
       </div>
-    ‘;
+    `;
   }
 
   generateMdfePanelHTML() {
-    return ‘
+    return `
       <div id="mdfe-panel">
         <!-- Seção Sem MDF-e -->
         <div class="section" style="margin-bottom: 16px;">
@@ -1577,11 +1696,11 @@ generatePanelHTML() {
           </div>
         </div>
       </div>
-    ‘;
+    `;
   }
 
   generateCiotPanelHTML() {
-    return ‘
+    return `
       <div id="ciot-panel" style="display: none;">
         <!-- Seção Sem CIOT -->
         <div class="section" style="margin-bottom: 16px;">
@@ -1627,11 +1746,11 @@ generatePanelHTML() {
           </div>
         </div>
       </div>
-    ‘;
+    `;
   }
 
   generateStatusPanelHTML() {
-    return ‘
+    return `
       <div id="status-panel" style="display: none;">
         <!-- Seção Pendentes -->
         <div class="section" style="margin-bottom: 16px;">
@@ -1676,7 +1795,7 @@ generatePanelHTML() {
           </div>
         </div>
       </div>
-    ‘;
+    `;
   }
 
 /**
@@ -1700,7 +1819,7 @@ async fetchData(initialLoad = false) {
     const params = this.buildSearchParams();
     const queryString = new URLSearchParams(params).toString();
     const apiUrls = this.config.getApiUrls();
-    const url = ‘${apiUrls.MANIFESTS.BASE_URL}?${queryString}’;
+    const url = `${apiUrls.MANIFESTS.BASE_URL}?${queryString}`;
     
     // 2. Fazer APENAS UMA requisição (usando fetchJSON diretamente)
     const manifestData = await this.apiService.fetchJSON(url);
@@ -1724,7 +1843,7 @@ async fetchData(initialLoad = false) {
         
   } catch (error) {
     console.error('Erro ao buscar dados:', error);
-    this.uiManager.setStatus(‘Falha ao carregar: ${error.message}’, 'error');
+    this.uiManager.setStatus(`Falha ao carregar: ${error.message}`, 'error');
     throw error;
   } finally {
     this.state.operationInProgress = false;
@@ -1737,7 +1856,7 @@ async fetchData(initialLoad = false) {
     try {
       this.initialized = true;
       const system = CONFIG.getCurrentSystem();
-      this.uiManager.setStatus(‘Iniciando painel ${system.NAME}...’, 'loading');
+      this.uiManager.setStatus(`Iniciando painel ${system.NAME}...`, 'loading');
       
       // 1. Inicializar elementos visuais primeiro
       this.initializePanel();
@@ -1762,7 +1881,7 @@ async fetchData(initialLoad = false) {
       
     } catch (error) {
       console.error('Falha crítica na inicialização:', error);
-      this.uiManager.setStatus(‘Falha na inicialização: ${error.message}’, 'error');
+      this.uiManager.setStatus(`Falha na inicialização: ${error.message}`, 'error');
       
       // Tentar reinicializar após 2 segundos
       setTimeout(() => {
@@ -1824,7 +1943,7 @@ async processBatch(items, processFn, actionName, batchSize = this.config.UI.BATC
 
     try {
       // Mensagem inicial com prioridade normal
-      this.uiManager.setStatus(‘Processando ${total} itens (${actionName})...’, 'loading');
+      this.uiManager.setStatus(`Processando ${total} itens (${actionName})...`, 'loading');
       
       for (let i = 0; i < total; i += batchSize) {
         const batch = items.slice(i, i + batchSize);
@@ -1836,9 +1955,9 @@ async processBatch(items, processFn, actionName, batchSize = this.config.UI.BATC
 
       return await this.finalizeProcessing(results, errors, total, actionName);
     } catch (error) {
-      console.error(‘Erro no ${actionName}:’, error);
+      console.error(`Erro no ${actionName}:`, error);
       this.uiManager.setStatus(
-        ‘Falha crítica: ${error.message || 'Erro desconhecido'}’,
+        `Falha crítica: ${error.message || 'Erro desconhecido'}`,
         'error',
         // 5000,
       );
@@ -1897,20 +2016,20 @@ async processBatch(items, processFn, actionName, batchSize = this.config.UI.BATC
     const progressPercentage = Math.round((processed / total) * 100);
     const successItems = batchResults.filter(r => r.success);
 
-    let statusMessage = ‘📊 ${actionName}: ${progressPercentage}% (${processed}/${total})’;
+    let statusMessage = `📊 ${actionName}: ${progressPercentage}% (${processed}/${total})`;
     let statusType = 'warning';
     let duration = this.config.UI.DELAY_MS_INFO;
 
     if (successItems.length > 0) {
       statusType = 'loading';
       const successCodes = await this.getSequenceCodes(successItems);    
-      statusMessage += ‘ | 📋 ${successItems.length} sucesso(s): ${successCodes.join(', ')}’;
+      statusMessage += ` | 📋 ${successItems.length} sucesso(s): ${successCodes.join(', ')}`;
     } 
 
     if (errorItems.length > 0) {
       statusType = 'loading';
       const errorCodes = await this.getSequenceCodes(errorItems);
-      statusMessage += ‘ | ⚠️ ${errorItems.length} erro(s): ${errorCodes.join(', ')}’;
+      statusMessage += ` | ⚠️ ${errorItems.length} erro(s): ${errorCodes.join(', ')}`;
     }
     
       await Utils.sleep(this.config.UI.DELAY_MS_ERROR)
@@ -1952,25 +2071,25 @@ async processBatch(items, processFn, actionName, batchSize = this.config.UI.BATC
 
     // Cabeçalho resumido
     if (hasSuccess && !hasErrors) {
-      finalMessage = ‘${actionName} concluído com sucesso! ${successCount} itens processados’;
+      finalMessage = `${actionName} concluído com sucesso! ${successCount} itens processados`;
       finalType = 'success';
     } else if (hasSuccess && hasErrors) {
-      finalMessage = ‘🟡 ${actionName} concluído parcialmente ${successCount} sucessos | ${errorCount} erros’;
+      finalMessage = `🟡 ${actionName} concluído parcialmente ${successCount} sucessos | ${errorCount} erros`;
       finalType = 'warning';
     } else if (!hasSuccess && hasErrors) {
-      finalMessage = ‘Falha no ${actionName}\n${errorCount} erros encontrados’;
+      finalMessage = `Falha no ${actionName}\n${errorCount} erros encontrados`;
       finalType = 'error';
       duration = 5000; // Erros ficam mais tempo visíveis
     }
 
     // Detalhes completos de sucesso
     if (hasSuccess) {
-      finalMessage += ‘ 🟢 Sucessos (${successCount}): ${successCodes.join(', ')}’;
+      finalMessage += ` 🟢 Sucessos (${successCount}): ${successCodes.join(', ')}`;
     }
 
     // Detalhes completos de erros
     if (hasErrors) {
-      finalMessage += ‘ 🔴 Erros (${errorCount}): ${errorCodes.join(', ')}’;
+      finalMessage += ` 🔴 Erros (${errorCount}): ${errorCodes.join(', ')}`;
     }
 
         await Utils.sleep(this.config.UI.DELAY_MS)
@@ -1978,7 +2097,7 @@ async processBatch(items, processFn, actionName, batchSize = this.config.UI.BATC
   }
 
 async logProcessingDetails(results, errors, actionName) {
-    console.groupCollapsed(‘%c📦 Resultados completos do ${actionName}’, 'font-weight:bold;color:#4a6baf;font-size:1.1em');
+    console.groupCollapsed(`%c📦 Resultados completos do ${actionName}`, 'font-weight:bold;color:#4a6baf;font-size:1.1em');
     
     // Resumo estatístico com tratamento para divisão por zero
     const total = results.length + errors.length;
@@ -1987,10 +2106,10 @@ async logProcessingDetails(results, errors, actionName) {
     
     // Calcula taxa de sucesso com tratamento para total = 0
     const successRate = total > 0 
-        ? ‘${Math.round((successCount / total) * 100)}%’
+        ? `${Math.round((successCount / total) * 100)}%`
         : '0%'; // Ou 'N/A' se preferir
 
-    console.log(‘%c📊 ESTATÍSTICAS GERAIS’, 'font-weight:bold;font-size:1.1em');
+    console.log(`%c📊 ESTATÍSTICAS GERAIS`, 'font-weight:bold;font-size:1.1em');
     console.table({
         'Total de itens': total,
         'Sucessos': successCount,
@@ -2000,7 +2119,7 @@ async logProcessingDetails(results, errors, actionName) {
 
     // Lista completa de sucessos
     if (successCount > 0) {
-      console.group(‘%c✅ TODOS OS ${successCount} SUCESSOS’, 'color:green;font-weight:bold');
+      console.group(`%c✅ TODOS OS ${successCount} SUCESSOS`, 'color:green;font-weight:bold');
       const successTable = await Promise.all(
         results.filter(r => r.success).map(async (result) => {
           const sequenceCode = await this.getSequenceCode(result.item?.id || result.item);
@@ -2017,7 +2136,7 @@ async logProcessingDetails(results, errors, actionName) {
 
     // Lista completa de erros
     if (errorCount > 0) {
-      console.group(‘%c❌ TODOS OS ${errorCount} ERROS’, 'color:red;font-weight:bold');
+      console.group(`%c❌ TODOS OS ${errorCount} ERROS`, 'color:red;font-weight:bold');
       
       const errorTable = await Promise.all(
         errors.map(async (error) => {
@@ -2037,7 +2156,7 @@ async logProcessingDetails(results, errors, actionName) {
       console.groupCollapsed('%c🔍 DETALHES COMPLETOS DOS ERROS', 'color:orange;font-weight:bold');
       await Promise.all(errors.map(async (error, index) => {
         const sequenceCode = await this.getSequenceCode(error.item?.id || error.item);
-        console.group(‘%cErro ${index + 1} - Manifesto: ${sequenceCode}’, 'color:orange');
+        console.group(`%cErro ${index + 1} - Manifesto: ${sequenceCode}`, 'color:orange');
         console.log('%cMensagem:', 'font-weight:bold', error.error.message);
        // console.log('%cDetalhes:', 'font-weight:bold', error.error.details);
        // console.log('%cItem:', 'font-weight:bold', error.item);
@@ -2110,7 +2229,7 @@ buildSearchParams() {
   const corporationId = system.API.MANIFESTS.CORPORATION_ID;
   
   return {
-    'search[manifests][service_date]': ‘${startDate} - ${endDate}’,
+    'search[manifests][service_date]': `${startDate} - ${endDate}`,
     'search[manifests][corporation_id][]': corporationId, // Usa o ID da filial atual
     'search[status]': 'pending,in_transit',
     format: 'json',
@@ -2143,13 +2262,13 @@ switchTab(tab) {
   if (this.uiManager.elements.statusPanel) this.uiManager.elements.statusPanel.style.display = 'none';
   
   // Mostra o painel ativo
-  const activePanel = this.uiManager.elements[‘${tab}Panel’];
+  const activePanel = this.uiManager.elements[`${tab}Panel`];
   if (activePanel) activePanel.style.display = '';
   
   // Atualiza estilos das abas
   const tabs = ['mdfe', 'ciot', 'status'];
   tabs.forEach(t => {
-    const tabElement = this.uiManager.elements[‘tab${t.charAt(0).toUpperCase() + t.slice(1)}’];
+    const tabElement = this.uiManager.elements[`tab${t.charAt(0).toUpperCase() + t.slice(1)}`];
     if (tabElement) {
       if (t === tab) {
         tabElement.style.backgroundColor = '#f8f9fa';
@@ -2436,8 +2555,8 @@ getSelectedCiotItems(listId) {
 
     document.addEventListener('mousemove', (e) => {
       if (!isDragging || !panel) return;
-      panel.style.left = ‘${e.clientX - offsetX}px’;
-      panel.style.top = ‘${e.clientY - offsetY}px’;
+      panel.style.left = `${e.clientX - offsetX}px`;
+      panel.style.top = `${e.clientY - offsetY}px`;
       panel.style.right = 'unset';
       e.preventDefault();
     });
@@ -2452,8 +2571,8 @@ async buildQueryParams() {
   
   // Usa as datas diretamente sem conversão
   params['search[manifests][service_date]'] = startDateInput && endDateInput
-    ? ‘${startDateInput} - ${endDateInput}’
-    : ‘${Utils.getTodayBRDate(this.config.UI.DEFAULT_DATE_OFFSET_DAYS)} - ${Utils.getTodayBRDate()}’;
+    ? `${startDateInput} - ${endDateInput}`
+    : `${Utils.getTodayBRDate(this.config.UI.DEFAULT_DATE_OFFSET_DAYS)} - ${Utils.getTodayBRDate()}`;
 
   params.timestamp = Date.now();
   
@@ -2482,7 +2601,7 @@ showFeedback(count, params) {
   const system = CONFIG.getCurrentSystem();
   
   this.messageManager.push(
-    ‘Painel ${system.NAME}: ${count} manifestos entre ${displayedStart} e ${displayedEnd}’, 
+    `Painel ${system.NAME}: ${count} manifestos entre ${displayedStart} e ${displayedEnd}`, 
     'success'
   );
 }
@@ -2596,7 +2715,7 @@ addListener(elementId, event, handler) {
 async doGenerate(manifestId) {
   // Pega o sequence_code do cache já existente
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Gerando MDF-e pendente...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Gerando MDF-e pendente...`, 'loading');
 
   const apiUrls = this.config.getApiUrls();
   
@@ -2604,14 +2723,14 @@ async doGenerate(manifestId) {
   const manifest = this.state.data.MDFeSystem.manifests.noMdfe.find(m => m.id == manifestId);
   
   if (!manifest) {
-    throw new Error(‘Manifesto ${sequenceCode} não encontrado’);
+    throw new Error(`Manifesto ${sequenceCode} não encontrado`);
   }
 
   const formData = new URLSearchParams();
   
   // Preenche os dados do manifesto (que já tem sequence_code)
   for (const [key, value] of Object.entries(manifest)) {
-    if (value != null) formData.append(‘manifest[${key}]’, value);
+    if (value != null) formData.append(`manifest[${key}]`, value);
   }
      
     // Flags específicas para MDF-e
@@ -2621,12 +2740,12 @@ async doGenerate(manifestId) {
     formData.append('manifest[unloading_state_id]', apiUrls.MDFE.DEFAULT_STATE_ID);
 
     await this.apiService.postForm(
-      ‘${apiUrls.MANIFESTS.BASE_URL}/${manifestId}’,
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}`,
       formData,
       'PUT'
     );
 
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: MDF-e gerado!’, 'success');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: MDF-e gerado!`, 'success');
   await this.fetchData(); // Atualiza os dados mantendo o cache
 }
 
@@ -2635,31 +2754,31 @@ async doGenerate(manifestId) {
  */
 async doNotGenerate(manifestId) {
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Cancelando MDF-e...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelando MDF-e...`, 'loading');
 
   const manifest = this.state.data.MDFeSystem.manifests.pendentes.find(m => m.id == manifestId);
   
   if (!manifest) {
-    throw new Error(‘Manifesto ${sequenceCode} não está pendente’);
+    throw new Error(`Manifesto ${sequenceCode} não está pendente`);
   }
 
   const formData = new URLSearchParams();
   
   // Usa os dados do cache/state
   for (const [key, value] of Object.entries(manifest)) {
-    if (value != null) formData.append(‘manifest[${key}]’, value);
+    if (value != null) formData.append(`manifest[${key}]`, value);
   }
   
   formData.append('manifest[generate_mdfe]', 'false');
   formData.append('manifest[mdfe_status]', '');
 
   await this.apiService.postForm(
-    ‘${this.config.getApiUrls().MANIFESTS.BASE_URL}/${manifestId}’,
+    `${this.config.getApiUrls().MANIFESTS.BASE_URL}/${manifestId}`,
     formData,
     'PUT'
   );
   
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Cancelamento realizado!’, 'success');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelamento realizado!`, 'success');
   await this.fetchData();
 }
 
@@ -2670,21 +2789,21 @@ async doIssue(docId) {
   // Obtém o manifestId correspondente ao docId ou usa o docId como fallback
   const manifestId = this.getManifestIdFromDocId(docId) || docId;
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Emitindo MDF-e...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Emitindo MDF-e...`, 'loading');
 
   const apiUrls = this.config.getApiUrls();
   const groups = await this.apiService.getMdfeGroups(docId);
   
   if (!groups?.length) {
-    throw new Error(‘Nenhum grupo encontrado para documento ${docId}’);
+    throw new Error(`Nenhum grupo encontrado para documento ${docId}`);
   }
 
   await this.apiService.postForm(
-    ‘${apiUrls.MDFE.GROUPS_URL}/${groups[0].id}/issue’,
+    `${apiUrls.MDFE.GROUPS_URL}/${groups[0].id}/issue`,
     new URLSearchParams()
   );
   
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Emissão concluída!’, 'success');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Emissão concluída!`, 'success');
   await this.fetchData();
 }
 
@@ -2692,38 +2811,38 @@ async doClose(docId) {
   // Obtém o manifestId correspondente ao docId ou usa o docId como fallback
   const manifestId = this.getManifestIdFromDocId(docId) || docId;
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Encerrando MDF-e...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Encerrando MDF-e...`, 'loading');
 
   const apiUrls = this.config.getApiUrls();
   const groups = await this.apiService.getMdfeGroups(docId);
   
   if (!groups?.length) {
-    throw new Error(‘Nenhum grupo para documento ${docId}’);
+    throw new Error(`Nenhum grupo para documento ${docId}`);
   }
 
   const mdfeId = groups[0].mdfe_id;
   if (!mdfeId) {
-    throw new Error(‘ID do MDF-e não encontrado para ${docId}’);
+    throw new Error(`ID do MDF-e não encontrado para ${docId}`);
   }
 
   const mdfeDetails = await this.apiService.fetchJSON(
-    ‘${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}’
+    `${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}`
   );
   
   const closingCityId = mdfeDetails.closing_city?.id;
   if (!closingCityId) {
-    throw new Error(‘Cidade de encerramento não definida para ${docId}’);
+    throw new Error(`Cidade de encerramento não definida para ${docId}`);
   }
 
   const formData = new URLSearchParams();
   formData.append('closing_city_id', closingCityId);
   
   await this.apiService.postForm(
-    ‘${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}/close’,
+    `${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}/close`,
     formData
   );
   
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Encerrado com sucesso!’, 'success');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Encerrado com sucesso!`, 'success');
   await this.fetchData();
 }
 
@@ -2731,29 +2850,29 @@ async doCancel(docId) {
   // Obtém o manifestId correspondente ao docId ou usa o docId como fallback
   const manifestId = this.getManifestIdFromDocId(docId) || docId;
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Cancelando MDF-e...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelando MDF-e...`, 'loading');
 
   const apiUrls = this.config.getApiUrls();
   const formData = new URLSearchParams();
   const groups = await this.apiService.getMdfeGroups(docId);
   
   if (!groups?.length) {
-    throw new Error(‘Nenhum grupo para documento ${docId}’);
+    throw new Error(`Nenhum grupo para documento ${docId}`);
   }
 
   const mdfeId = groups[0].mdfe_id;
   if (!mdfeId) {
-    throw new Error(‘ID do MDF-e não encontrado para ${docId}’);
+    throw new Error(`ID do MDF-e não encontrado para ${docId}`);
   }
 
   formData.append('reason', 'Cancelamento solicitado pelo usuário');
   
   await this.apiService.postForm(
-    ‘${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}/cancel’,
+    `${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}/cancel`,
     formData
   );
   
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Cancelamento realizado!’, 'success');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelamento realizado!`, 'success');
   await this.fetchData();
 }
 
@@ -2769,7 +2888,7 @@ async doCancel(docId) {
 async getMdfeGroups(manifestId) {
   try {
     const response = await this.apiService.fetchJSON(
-      ‘${this.config.getApiUrls().MANIFESTS.BASE_URL}/${manifestId}/mdfe_groups’
+      `${this.config.getApiUrls().MANIFESTS.BASE_URL}/${manifestId}/mdfe_groups`
     );
     
     if (!response) {
@@ -2785,7 +2904,7 @@ async getMdfeGroups(manifestId) {
       timestamp: new Date().toISOString()
     });
     
-    throw new Error(‘Não foi possível obter grupos MDF-e: ${error.message}’);
+    throw new Error(`Não foi possível obter grupos MDF-e: ${error.message}`);
   }
 }
 
@@ -2816,7 +2935,7 @@ getManifestIdFromDocId(docId) {
 async incluirCIOTPendente(manifestId) {
 
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Incluindo CIOT pendente...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Incluindo CIOT pendente...`, 'loading');
 
     // Busca o manifesto correto com mais tolerância
     const manifest = this.state.data.CiotSystem.manifests.noCiot.find(m => 
@@ -2824,7 +2943,7 @@ async incluirCIOTPendente(manifestId) {
     );
     
     if (!manifest) {
-      throw new Error(‘Manifesto com ID ${manifestId} não encontrado na lista de manifestos sem CIOT’);
+      throw new Error(`Manifesto com ID ${manifestId} não encontrado na lista de manifestos sem CIOT`);
     }
 
     const effectiveManifestId = manifest.doc_e_id || manifest.id;
@@ -2858,7 +2977,7 @@ async incluirCIOTPendente(manifestId) {
 
     // Prepara os dados do CIOT
     const formData = new URLSearchParams();
-    const add = (k, v) => v !== undefined && v !== null && formData.set(‘doc_e_ciot_standard[${k}]’, v);
+    const add = (k, v) => v !== undefined && v !== null && formData.set(`doc_e_ciot_standard[${k}]`, v);
 
     // Dados básicos na ordem correta conforme API
     add('id', ciotData.id || '');
@@ -2905,23 +3024,23 @@ async incluirCIOTPendente(manifestId) {
 
     // Dados do motorista
     if (driverId) {
-      formData.set(‘doc_e_ciot_standard[ciot_drivers_attributes][0][driver_id]’, driverId);
+      formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][driver_id]`, driverId);
       if (paymentMethodId) {
-        formData.set(‘doc_e_ciot_standard[ciot_drivers_attributes][0][payment_method_id]’, paymentMethodId);
-        formData.set(‘doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][id]’, paymentMethodId);
-        formData.set(‘doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][name]’, paymentMethodName);
-        formData.set(‘doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][ciot_integration_id]’, 
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_method_id]`, paymentMethodId);
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][id]`, paymentMethodId);
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][name]`, paymentMethodName);
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][ciot_integration_id]`, 
           this.config.getApiUrls().CIOT.INTEGRATION_ID);
       }
     }
 
     // Dados do manifesto
-    formData.set(‘doc_e_ciot_standard[ciot_manifests_attributes][0][manifest_id]’, manifest.id);
-    formData.set(‘doc_e_ciot_standard[ciot_manifests_attributes][0][esl_tenant_id]’, this.config.getApiUrls().CIOT.TENANT_ID);
-    formData.set(‘doc_e_ciot_standard[ciot_manifests_attributes][0][integrated]’, 'false');
+    formData.set(`doc_e_ciot_standard[ciot_manifests_attributes][0][manifest_id]`, manifest.id);
+    formData.set(`doc_e_ciot_standard[ciot_manifests_attributes][0][esl_tenant_id]`, this.config.getApiUrls().CIOT.TENANT_ID);
+    formData.set(`doc_e_ciot_standard[ciot_manifests_attributes][0][integrated]`, 'false');
     
     // Endpoint fixo para criação (POST)
-    const endpoint = ‘${this.config.getApiUrls().CIOT.BASE_URL}/standards’;
+    const endpoint = `${this.config.getApiUrls().CIOT.BASE_URL}/standards`;
     const method = 'POST'; // Definindo explicitamente o método como POST
     
     console.log('Enviando dados para:', endpoint, 'Método:', method, 'Dados:', Object.fromEntries(formData));
@@ -2932,7 +3051,7 @@ async incluirCIOTPendente(manifestId) {
       throw new Error('A API não retornou o ID do CIOT criado');
     }
     
-    this.uiManager.setStatus(‘Manifesto ${sequenceCode}: CIOT pendente incluído com sucesso!’, 'success');
+    this.uiManager.setStatus(`Manifesto ${sequenceCode}: CIOT pendente incluído com sucesso!`, 'success');
     await this.fetchData(); // Atualiza os dados
     
     return response;
@@ -2946,11 +3065,11 @@ async incluirCIOTPendente(manifestId) {
 async integrarCIOT(manifestId) {
 
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Iniciando integração CIOT...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Iniciando integração CIOT...`, 'loading');
 
     // 1. PRIMEIRA CHAMADA - Obter o CIOT_ID pelo manifest_id (usando endpoint específico)
     const ciotResponse = await this.apiService.fetchJSON(
-      ‘${this.config.getApiUrls().CIOT.BASE_URL}/standards/for_manifest?manifest_id=${manifestId}’
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/for_manifest?manifest_id=${manifestId}`
     );
 
     if (!ciotResponse?.id) {
@@ -2963,7 +3082,7 @@ async integrarCIOT(manifestId) {
     const ciotDetails = await this.getCiotDetails(ciotId);
     
     if (ciotDetails.status !== 'pending') {
-      throw new Error(‘CIOT não está no status "pendente" (status atual: ${ciotDetails.status})’);
+      throw new Error(`CIOT não está no status "pendente" (status atual: ${ciotDetails.status})`);
     }
 
     // 3. SEGUNDA CHAMADA - Integrar o CIOT
@@ -2971,18 +3090,18 @@ async integrarCIOT(manifestId) {
     formData.set('_method', 'POST');
     
     const result = await this.apiService.postForm(
-      ‘${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}/integrate’,
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}/integrate`,
       formData
     );
 
     // 4. VERIFICAR RESULTADO
     if (result.status === 'sending') {
-      this.uiManager.setStatus(‘Manifesto ${sequenceCode}: CIOT integrado com sucesso!’, 'success');
+      this.uiManager.setStatus(`Manifesto ${sequenceCode}: CIOT integrado com sucesso!`, 'success');
       await this.fetchData(); // Atualizar dados
       return result;
     }
 
-    throw new Error(‘Status inesperado na resposta: ${result.status}’);
+    throw new Error(`Status inesperado na resposta: ${result.status}`);
 }
 
 /**
@@ -2993,7 +3112,7 @@ async integrarCIOT(manifestId) {
 async cancelarCIOT(manifestId) {
 
   const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-  this.uiManager.setStatus(‘Manifesto ${sequenceCode}: Preparando cancelamento...’, 'loading');
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Preparando cancelamento...`, 'loading');
 
     // 1. Obter o CIOT ID através do manifestId
     const ciotData = await this.apiService.getCiotForManifest(manifestId);
@@ -3009,7 +3128,7 @@ async cancelarCIOT(manifestId) {
     formData.set('_method', 'POST');
     
     // 3. Fazer a requisição de cancelamento
-    const endpoint = ‘${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}/cancel’;
+    const endpoint = `${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}/cancel`;
     
     const result = await this.apiService.postForm(endpoint, formData);
     
@@ -3018,7 +3137,7 @@ async cancelarCIOT(manifestId) {
       throw new Error(result?.error || 'Falha no cancelamento');
     }
 
-    this.uiManager.setStatus(‘Manifesto ${sequenceCode}: CIOT cancelado com sucesso!’, 'success');
+    this.uiManager.setStatus(`Manifesto ${sequenceCode}: CIOT cancelado com sucesso!`, 'success');
     await this.fetchData();
     
     return result;
@@ -3032,7 +3151,7 @@ async cancelarCIOT(manifestId) {
 async getCiotDetails(ciotId) {
 
     const response = await this.apiService.fetchJSON(
-      ‘${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}’
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}`
     );
     
     if (!response) {
@@ -3086,374 +3205,253 @@ async processSelectedCiot(listType, processFn) {
   }
 }
 
-class ManifestStatusManager {
-  constructor(config, apiService, uiManager) {
-    this.config = config;
-    this.apiService = apiService;
-    this.uiManager = uiManager;
-    this.messageManager = new MessageQueueManager(uiManager);
-  }
+function isAuthorizedDomain() {
+  const authorizedDomains = [
+    'ibllogistica.eslcloud.com.br',
+    'logiclog.eslcloud.com.br',
+    'eslcloud.com.br' // Domínio raiz, se necessário
+  ];
 
-  // Método auxiliar para obter sequence_code
-  async #getSequenceCodeWithFallback(manifestId) {
-    try {
-      const manifestDetails = await this.apiService.getManifestDetails(manifestId);
-      return manifestDetails.sequence_code || manifestId;
-    } catch {
-      return manifestId;
-    }
-  }
+  const currentDomain = window.location.hostname.toLowerCase();
+  
+  return authorizedDomains.some(domain => 
+    currentDomain === domain || 
+    currentDomain.endsWith('.' + domain)
+  );
+}
 
-  /**
-   * Formata data/hora para a API
-   */
-  getFormattedDateTime() {
-    const now = new Date();
-    const date = now.toLocaleDateString('pt-BR').split('/').reverse().join('-');
-    const time = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-    return { date, time };
-  }
+  function showDomainWarningMessage() {
+    // Cria o container principal
+    const warningContainer = document.createElement('div');
+    warningContainer.id = 'esl-domain-warning';
+    warningContainer.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: #fff3cd;
+      color: #856404;
+      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      z-index: 99999;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      overflow: hidden;
+      animation: slideDown 0.5s ease-out;
+    `;
 
-  /**
-   * Inicia transporte (Pending → In_Transit)
-   */
-async startTransport(manifestId) {
-    if (!manifestId) throw new Error('ID do manifesto não fornecido');
+    // Barra de progresso do timer
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+      height: 4px;
+      background-color: #ffc107;
+      width: 100%;
+      transform-origin: left;
+      transform: scaleX(1);
+      transition: transform linear;
+    `;
+    warningContainer.appendChild(progressBar);
 
-    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-    this.uiManager.setStatus(‘Iniciando transporte ${sequenceCode}...’, 'loading');
+    // Container do conteúdo
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.cssText = `
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+    `;
+    warningContainer.appendChild(contentWrapper);
 
-    const apiUrls = this.config.getApiUrls();
-    const manifestDetails = await this.apiService.getManifestEditDetails(manifestId);
-
-    // Fallback para hoje às 8:00 se departured_at não existir
-    const departuredAt = manifestDetails.departured_at 
-      ? new Date(manifestDetails.departured_at) 
-      : this.#getTodayAt6AM();
-
-    const brTimeString = departuredAt.toLocaleString('pt-BR', {
-      timeZone: 'America/Sao_Paulo',
-      hour12: false
-    });
-
-    const [datePart, timePart] = brTimeString.split(', ');
-    const [day, month, year] = datePart.split('/');
-    const [hours, minutes] = timePart.split(':');
+    // Ícone de alerta
+    const warningIcon = document.createElement('span');
+    warningIcon.innerHTML = '⚠️';
+    warningIcon.style.fontSize = '18px';
+    contentWrapper.appendChild(warningIcon);
     
-    const formattedISO = ‘${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:00.000-03:00’;
-
-    const formData = new URLSearchParams();
-    formData.append('departured_at', formattedISO);
-    formData.append('departured_at_date', ‘${year}-${month}-${day}’);
-    formData.append('departured_at_time', ‘${hours}:${minutes}’);
-
-    const response = await this.apiService.postForm(
-      ‘${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/start_transport’,
-      formData
-    );
-
-    this.uiManager.setStatus(‘Transporte ${sequenceCode} iniciado’, 'success');
-    return response;
-}
-
-// Método auxiliar para obter a data de hoje às 6:00 AM
-#getTodayAt6AM() {
-    const now = new Date();
-    // Define para hoje às 6:00 no fuso horário de São Paulo
-    return new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        6,  // horas
-        0,  // minutos
-        0,  // segundos
-        0   // milissegundos
-    );
-}
-
-async unlockToPending(manifestId) {
-    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-    this.uiManager.setStatus(‘Retornando ${sequenceCode} para "Pendente"...’, 'loading');
-
-    const apiUrls = this.config.getApiUrls();
-    const response = await this.apiService.postForm(
-      ‘${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/unlock’,
-      new URLSearchParams()
-    );
-
-    this.uiManager.setStatus(‘${sequenceCode} retornado para "Pendente"‘, 'success');
-    return response;
-}
-
-  /**
-   * Finaliza manifesto (In_Transit → Closed)
-   */
-async closeManifest(manifestId, manifestData = {}) {
-    if (!manifestId) throw new Error('ID do manifesto não fornecido');
-
-    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-    this.uiManager.setStatus(‘Finalizando manifesto ${sequenceCode}...’, 'loading');
-
-    const apiUrls = this.config.getApiUrls();
-    const manifestDetails = await this.apiService.getManifestEditDetails(manifestId);
-
-    // Obter data/hora atual formatada
-    const { date: currentDate, time: currentTime } = this.getFormattedDateTime();
-    const now = new Date();
-
-    // PRESERVAÇÃO DOS DADOS TEMPORAIS (igual ao updateManifestStatus)
-    // Usa closed_at existente ou data atual
-    const closedAt = manifestDetails.closed_at 
-                   ? new Date(manifestDetails.closed_at) 
-                   : now;
+    // Texto da mensagem
+    const warningText = document.createElement('span');
+    warningText.textContent = 'Este recurso só está disponível em domínios autorizados da ESL Cloud';
+    warningText.style.fontSize = '14px';
+    contentWrapper.appendChild(warningText);
     
-    // Preserva departured_at existente
-    const departuredAt = manifestDetails.departured_at
-                      ? new Date(manifestDetails.departured_at)
-                      : null;
+// Container para os botões (mantenha isso)
+const buttonsContainer = document.createElement('div');
+buttonsContainer.style.cssText = `
+  display: flex;
+  gap: 10px;
+  margin-left: 10px;
+`;
 
-    // Configurar payload com dados padrão do sistema
-    const payload = {
-      utf8: '✓',
-      authenticity_token: await Utils.getCSRFToken(),
-      close_now: 'true',
-      manifest: {
-        id: manifestId,
-        status: 'closed',
-        checklist_confirmed: 'true',
-        closing_km: manifestData.closing_km || '0',
-        closing_comments: manifestData.closing_comments || '',
-        
-        // Campos temporais preservados
-        closed_at: closedAt.toISOString(),
-        closing_date: currentDate,
-        closing_time: currentTime,
-        ...(departuredAt && { departured_at: departuredAt.toISOString() }), // Só adiciona se existir
-        
-        // Restante dos campos originais...
-        esl_tenant_id: apiUrls.CIOT.TENANT_ID,
-        corporation_id: apiUrls.MANIFESTS.CORPORATION_ID,
-        calculation_origin_city_id: manifestDetails.calculation_origin_city_id || 
-                                   manifestDetails.calculation_origin_city?.id || 
-                                   '',
-        calculation_destination_city_id: manifestDetails.calculation_destination_city_id || 
-                                       manifestDetails.calculation_destination_city?.id || 
-                                       '',
-        loading_state_id: manifestDetails.loading_state_id || '12',
-        unloading_state_id: manifestDetails.unloading_state_id || '12',
-        vehicle_id: manifestDetails.vehicle_id || '',
-        main_driver_id: manifestDetails.main_driver_id || '',
-        vehicle_plate: manifestDetails.vehicle?.license_plate || '',
-        drivers_names: manifestDetails.drivers_names || [],
-        calculation_type: manifestDetails.calculation_type || 'price_table',
-        cargo_type: manifestDetails.cargo_type || 'closed',
-        contract_type: manifestDetails.contract_type || 'aggregate',
-        mdfe_operation_type: manifestDetails.mdfe_operation_type || 'transport_service',
-        manifest_type: manifestDetails.manifest_type || 'fractionated_cargo',
-        freight_subtotal: manifestDetails.freight_subtotal || '0',
-        total_cost: manifestDetails.total_cost || '0',
-        paying_total: manifestDetails.paying_total || '0',
-        status_operational_checklist: 'pending',
-        itinerary_status: 'pending',
-        advance_cost_released: manifestDetails.advance_cost_released ? 'true' : 'false',
-        aggregate_cost_released: manifestDetails.aggregate_cost_released ? 'true' : 'false',
-        vehicle_utilization_released: manifestDetails.vehicle_utilization_released ? 'true' : 'false',
-        ciot_id: manifestDetails.ciot_id || '',
-        ciot_status: manifestDetails.ciot_status || '',
-        manifest_ciot_closing_batch_id: manifestDetails.manifest_ciot_closing_batch_id || ''
-      }
+// --- BOTÃO IBL LOGÍSTICA ---
+const iblButton = document.createElement('button');
+iblButton.style.cssText = `
+  padding: 4px 12px;
+  background-color: #ffc107;
+  color: #856404;
+  border: 1px solid #d39e00;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+`;
+
+// Ícone SVG para IBL (cadeado)
+const iblIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+iblIcon.setAttribute('width', '14');
+iblIcon.setAttribute('height', '14');
+iblIcon.setAttribute('viewBox', '0 0 24 24');
+iblIcon.style.marginRight = '5px';
+
+const iblPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+iblPath.setAttribute('fill', '#856404');
+iblPath.setAttribute('d', 'M12,2L4,5v6.09c0,5.05 3.41,9.76 8,10.91c4.59-1.15 8-5.86 8-10.91V5L12,2z');
+iblIcon.appendChild(iblPath);
+
+iblButton.appendChild(iblIcon);
+iblButton.appendChild(document.createTextNode('IBL Logística'));
+
+// --- BOTÃO LOGIC LOG ---
+const logicButton = document.createElement('button');
+logicButton.style.cssText = `
+  padding: 4px 12px;
+  background-color: #17a2b8;
+  color: white;
+  border: 1px solid #117a8b;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+`;
+
+// Ícone SVG para Logic Log (cubo)
+const logicIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+logicIcon.setAttribute('width', '14');
+logicIcon.setAttribute('height', '14');
+logicIcon.setAttribute('viewBox', '0 0 24 24');
+logicIcon.style.marginRight = '5px';
+
+const logicPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+logicPath.setAttribute('fill', 'white');
+logicPath.setAttribute('d', 'M21,16.5c0,0.38-0.21,0.71-0.53,0.88l-7.9,4.44c-0.16,0.12-0.36,0.18-0.57,0.18c-0.21,0-0.41-0.06-0.57-0.18l-7.9-4.44 C3.21,17.21,3,16.88,3,16.5v-9c0-0.38,0.21-0.71,0.53-0.88l7.9-4.44c0.16-0.12,0.36-0.18,0.57-0.18c0.21,0,0.41,0.06,0.57,0.18 l7.9,4.44C20.79,6.79,21,7.12,21,7.5V16.5z');
+logicIcon.appendChild(logicPath);
+
+logicButton.appendChild(logicIcon);
+logicButton.appendChild(document.createTextNode('Logic Log'));
+
+// --- COMPORTAMENTOS ---
+iblButton.onclick = () => window.open('https://ibllogistica.eslcloud.com.br', '_blank');
+logicButton.onclick = () => window.open('https://logiclog.eslcloud.com.br', '_blank');
+
+// Efeitos hover
+iblButton.onmouseover = () => { iblButton.style.backgroundColor = '#e0a800'; };
+iblButton.onmouseout = () => { iblButton.style.backgroundColor = '#ffc107'; };
+
+logicButton.onmouseover = () => { logicButton.style.backgroundColor = '#138496'; };
+logicButton.onmouseout = () => { logicButton.style.backgroundColor = '#17a2b8'; };
+
+// Adiciona ao container
+buttonsContainer.appendChild(iblButton);
+buttonsContainer.appendChild(logicButton);
+contentWrapper.appendChild(buttonsContainer);
+    
+    // Botão de fechar
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      background: none;
+      border: none;
+      color: #856404;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0 8px;
+      margin-left: 10px;
+      transition: transform 0.2s ease;
+    `;
+    
+    // Efeito hover no botão
+    closeButton.onmouseover = () => closeButton.style.transform = 'scale(1.3)';
+    closeButton.onmouseout = () => closeButton.style.transform = 'scale(1)';
+    
+    // Ação de fechar
+    closeButton.onclick = () => {
+      setCookie('esl_warning_closed', 'true', 1); // Expira em 1 dia
+      warningContainer.style.opacity = '0';
+      setTimeout(() => warningContainer.remove(), 500);
     };
+    contentWrapper.appendChild(closeButton);
+    
+    // Adiciona ao corpo do documento
+    document.body.appendChild(warningContainer);
+    
+    // Animação da barra de progresso (15 segundos)
+    const duration = 15000; // 15 segundos
+    let startTime = Date.now();
+    
+    const animateProgressBar = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = 1 - (elapsed / duration);
+      
+      if (progress <= 0) {
+        progressBar.style.transform = 'scaleX(0)';
+        closeButton.click();
+        return;
+      }
+      
+      progressBar.style.transform = `scaleX(${progress})`;
+      requestAnimationFrame(animateProgressBar);
+    };
+    
+    animateProgressBar();
+    
+    // Adiciona os estilos CSS dinamicamente
+    addWarningStyles();
+  }
 
-    // Converter para FormData
-    const formData = new URLSearchParams();
-    for (const [key, value] of Object.entries(payload)) {
-      if (typeof value === 'object') {
-        for (const [subKey, subValue] of Object.entries(value)) {
-          if (Array.isArray(subValue)) {
-            subValue.forEach((item, index) => {
-              formData.append(‘manifest[${subKey}][${index}]’, item);
-            });
-          } else {
-            formData.append(‘manifest[${subKey}]’, subValue);
-          }
-        }
-      } else {
-        formData.append(key, value);
+  function addWarningStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideDown {
+        from { transform: translateY(-100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      
+      #esl-domain-warning {
+        animation: slideDown 0.5s ease-out;
+      }
+      
+      #esl-domain-warning a:hover {
+        color: #5a4a00;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+  }
+
+  function getCookie(name) {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [cookieName, cookieValue] = cookie.split('=').map(c => c.trim());
+      if (cookieName === name) {
+        return cookieValue;
       }
     }
-
-    // Adicionar estrutura de despesas (obrigatória)
-    formData.append('manifest[expenses_attributes][0][id]', '');
-    formData.append('manifest[expenses_attributes][0][manifest_id]', manifestId);
-    formData.append('manifest[expenses_attributes][0][value]', '0');
-    formData.append('manifest[expenses_attributes][0][accounting_planning_management_id]', '');
-    formData.append('manifest[expenses_attributes][0][date]', '');
-    formData.append('manifest[expenses_attributes][0][comments]', '');
-
-    const response = await this.apiService.postForm(
-      ‘${apiUrls.MANIFESTS.BASE_URL}/closing/${manifestId}’,
-      formData,
-      'PATCH'
-    );
-
-    this.uiManager.setStatus(‘${sequenceCode} fechado com sucesso’, 'success');
-    return response;
-}
-
-  /**
-   * Reabre manifesto (Closed → In_Transit)
-   */
-async reverseToInTransit(manifestId) {
-
-    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
-    this.uiManager.setStatus(‘Estornando ${sequenceCode} para "Em Trânsito"...’, 'loading');
-
-    const apiUrls = this.config.getApiUrls();
-    const response = await this.apiService.postForm(
-      ‘${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/reverse’,
-      new URLSearchParams()
-    );
-
-    this.uiManager.setStatus(‘${sequenceCode} estornado para "Em Trânsito"‘, 'success');
-    return response;
+    return '';
  }
-}
-
-// MessageQueueManager.js
-class MessageQueueManager {
-  constructor(uiManager) {
-    this.uiManager = uiManager;
-    this.queue = [];
-    this.currentMessage = null;
-    this.subscribers = new Set();
-    this.paused = false;
-    this.clearTimeoutId = null;
-  }
-
-  push(message, type, options = {}) {
-    const msg = {
-      id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-      message,
-      type,
-      priority: options.priority || 0,
-      persist: options.persist || false,
-      createdAt: Date.now(),
-      duration: options.duration // Duração personalizada se fornecida
-    };
-
-    if (!this.isDuplicate(msg)) {
-      this.insertSorted(msg);
-      this.processQueue();
-    }
-  }
-
-  insertSorted(msg) {
-    const index = this.queue.findIndex(
-      m => m.priority < msg.priority || 
-          (m.priority === msg.priority && m.createdAt > msg.createdAt)
-    );
-    
-    if (index === -1) this.queue.push(msg);
-    else this.queue.splice(index, 0, msg);
-  }
-
-  isDuplicate(msg) {
-    return this.queue.some(m =>
-      m.message === msg.message &&
-      m.type === msg.type &&
-      Date.now() - m.createdAt < 10000
-    );
-  }
-
-  clearStatus() {
-    if (this.clearTimeoutId) {
-      clearTimeout(this.clearTimeoutId);
-      this.clearTimeoutId = null;
-    }
-    // this.uiManager.clearStatus();
-  }
-
-  async processQueue() {
-    if (this.paused || this.currentMessage || this.queue.length === 0) return;
-
-    this.currentMessage = this.queue.shift();
-    
-    // Limpa o status antes de mostrar nova mensagem
-    this.clearStatus();
-    
-    // Exibe a mensagem
-    this.uiManager.setStatus(this.currentMessage.message, this.currentMessage.type);
-    this.subscribers.forEach(sub => sub(this.currentMessage));
-
-    if (!this.currentMessage.persist) {
-      const duration = this.calculateDisplayTime(this.currentMessage);
-      this.clearTimeoutId = setTimeout(() => {
-        this.currentMessage = null;
-        this.clearStatus();
-        this.processQueue();
-      }, duration);
-    }
-  }
-
-calculateDisplayTime(msg) {
-  // 1. Defina as durações base de forma consistente
-  const baseDurations = {
-    error: CONFIG.UI.DELAY_MS_ERROR,    // 3s para erros
-    warning: CONFIG.UI.DELAY_MS,  // 2s para avisos
-    success: CONFIG.UI.DELAY_MS,  // 2s para sucesso
-    loading: CONFIG.UI.DELAY_MS_INFO,  // 2.5s para carregamentos
-    info: CONFIG.UI.DELAY_MS_INFO,  // 2.5s para carregamentos
-    default: CONFIG.UI.DELAY_MS   // 2s padrão
-  };
-
-  // 2. Se a mensagem tiver duração definida, use-a
-  if (msg.duration !== undefined) return msg.duration;
-  
-  // 3. Obtenha o tempo base conforme o tipo de mensagem
-  const baseTime = baseDurations[msg.type] || baseDurations.default;
-  
-  // 4. Calcule o fator de comprimento (0.5 a 4)
-  const lengthFactor = Math.min(Math.max(msg.message.length / 50, 0.5), 4);
-  
-  // 5. Calcule o fator de prioridade (1 a 1.6 para prioridades 0-2)
-  const priorityFactor = 1 + (msg.priority * 0.3);
-  
-  // 6. Calcule e retorne o tempo final (arredondado para baixo)
-  return Math.floor(baseTime * lengthFactor * priorityFactor);
-}
-
-  next() {
-    if (this.currentMessage) {
-      clearTimeout(this.clearTimeoutId);
-      this.currentMessage = null;
-      this.clearStatus();
-      this.processQueue();
-    }
-  }
-
-  pause() { 
-    this.paused = true;
-    if (this.clearTimeoutId) clearTimeout(this.clearTimeoutId);
-  }
-
-  resume() { 
-    this.paused = false; 
-    if (!this.currentMessage) this.processQueue();
-  }
-
-  // Novo método para limpeza completa
-  flush() {
-    this.queue = [];
-    this.next();
-  }
-}
 
 // =============================================
 // MAIN
 // =============================================
-(function() {
-  'use strict';
-
   // Verifica se o usuário já fechou a mensagem anteriormente
   if (getCookie('esl_warning_closed') === 'true') {
     // return;
@@ -3487,7 +3485,11 @@ calculateDisplayTime(msg) {
     manifestProcessor,
     uiManager,
     statusManager,
+    messageManager
   );
+
+  // Expõe o gerenciador para controle externo
+  window.panelManager = panelManager;
 
   function initPanel() {
     if (typeof window !== 'undefined' && document.body) {
@@ -3503,12 +3505,7 @@ calculateDisplayTime(msg) {
   }
 
   window.initUnifiedPanel = initPanel;
-            
-            // Inicialização condicional
-            if(!document.getElementById('control-panel')) {
-                new PanelManager(CONFIG, apiService, manifestProcessor, uiManager, statusManager).init();
-            }
-        })();
+})();
     `.replace(/\n\s+/g, ''); // Remove espaços para minificação
     
     // Executa o código diretamente na página atual
