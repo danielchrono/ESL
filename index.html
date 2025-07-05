@@ -2,9 +2,7 @@
 <html>
 <head>
     <title>Painel ESL</title>
-    <link rel="icon" href="https://d16fnh4kiggo7m.cloudfront.net/assets/favicon-32x32-d6ccef80c573130ffd5c0c05e8c87b6fe11cbeb61bf62d368f058c0c83f9dd42.png" type="image/png">
-</head>
-<body>
+    <link rel="icon" href="https://d16fnh4kiggo7m.cloudfront.net/assets/favicon-32x32.png">
     <script>
  const CONFIG = {
   SYSTEMS: {
@@ -3385,6 +3383,11 @@ calculateDisplayTime(msg) {
     // return;
   }
 
+        if (!location.hostname.match(/eslcloud\.com\.br$/)) {
+            alert("Acesso não autorizado");
+            return;
+        }
+
   if (!isAuthorizedDomain()) {
     console.warn('Acesso não autorizado: Este script só pode ser executado em domínios ESL Cloud');
     showDomainWarningMessage();
@@ -3431,5 +3434,6 @@ calculateDisplayTime(msg) {
   window.initUnifiedPanel = initPanel;
 })();
     </script>
-</body>
+</head>
+<body></body>
 </html>
