@@ -1,0 +1,3435 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Painel ESL</title>
+    <link rel="icon" href="https://d16fnh4kiggo7m.cloudfront.net/assets/favicon-32x32-d6ccef80c573130ffd5c0c05e8c87b6fe11cbeb61bf62d368f058c0c83f9dd42.png">
+</head>
+<body>
+    <script>
+javascript:const CONFIG = {
+  SYSTEMS: {
+    IBL: {
+      BASE_DOMAIN: 'ibllogistica.eslcloud.com.br',
+      NAME: 'IBL Logística',
+      API: {
+        MANIFESTS: { CORPORATION_ID: '13567' },
+        MDFE: { DEFAULT_STATE_ID: '12' },
+        CIOT: { TENANT_ID: '76', INTEGRATION_ID: '139', CORPORATION_ID: '13567' }
+      }
+    },
+    LOGIC: {
+      BASE_DOMAIN: 'logiclog.eslcloud.com.br', 
+      NAME: 'Logic Log',
+      API: {
+        MANIFESTS: { CORPORATION_ID: '98747' },
+        MDFE: { DEFAULT_STATE_ID: '12' },
+        CIOT: { TENANT_ID: '210', INTEGRATION_ID: '215', CORPORATION_ID: '97858' }
+      }
+    }
+  },
+  UI: {
+    DELAY_MS: 2000,
+    DELAY_MS_ERROR: 3000,
+    DELAY_MS_INFO: 4000,
+    POOL_INTERVAL: 100,
+    REFRESH_INTERVAL: 300000,
+    DEFAULT_PANEL_SIZE: { width: '580px', height: '620px' },
+    DEFAULT_PANEL_POSITION: { top: '20px', right: '20px' },
+    BATCH_SIZE: 50,
+    DEFAULT_DATE_OFFSET_DAYS: -10
+  },
+
+  getCurrentSystem() {
+    const host = window.location.hostname;
+    if (host.includes(this.SYSTEMS.LOGIC.BASE_DOMAIN)) return this.SYSTEMS.LOGIC;
+    return this.SYSTEMS.IBL;
+  },
+  
+  getApiUrls() {
+    const system = this.getCurrentSystem();
+    return {
+      MANIFESTS: {
+        BASE_URL: `https://${system.BASE_DOMAIN}/manifests`,
+        CORPORATION_ID: system.API.MANIFESTS.CORPORATION_ID
+      },
+      MDFE: {
+        DOCS_URL: `https://${system.BASE_DOMAIN}/doc_e/mdfe`,
+        GROUPS_URL: `https://${system.BASE_DOMAIN}/doc_e/mdfe/groups`,
+        DEFAULT_STATE_ID: system.API.MDFE.DEFAULT_STATE_ID
+      },
+      CIOT: {
+        BASE_URL: `https://${system.BASE_DOMAIN}/doc_e/ciot`,
+        TENANT_ID: system.API.CIOT.TENANT_ID,
+        INTEGRATION_ID: system.API.CIOT.INTEGRATION_ID,
+        CORPORATION_ID: system.API.CIOT.CORPORATION_ID
+      }
+    }
+  }
+};
+
+function isAuthorizedDomain() {
+  const authorizedDomains = [
+    'ibllogistica.eslcloud.com.br',
+    'logiclog.eslcloud.com.br',
+    'eslcloud.com.br' // Domínio raiz, se necessário
+  ];
+
+  const currentDomain = window.location.hostname.toLowerCase();
+  
+  return authorizedDomains.some(domain => 
+    currentDomain === domain || 
+    currentDomain.endsWith('.' + domain)
+  );
+}
+
+  function showDomainWarningMessage() {
+    // Cria o container principal
+    const warningContainer = document.createElement('div');
+    warningContainer.id = 'esl-domain-warning';
+    warningContainer.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: #fff3cd;
+      color: #856404;
+      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      z-index: 99999;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      overflow: hidden;
+      animation: slideDown 0.5s ease-out;
+    `;
+
+    // Barra de progresso do timer
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+      height: 4px;
+      background-color: #ffc107;
+      width: 100%;
+      transform-origin: left;
+      transform: scaleX(1);
+      transition: transform linear;
+    `;
+    warningContainer.appendChild(progressBar);
+
+    // Container do conteúdo
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.cssText = `
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+    `;
+    warningContainer.appendChild(contentWrapper);
+
+    // Ícone de alerta
+    const warningIcon = document.createElement('span');
+    warningIcon.innerHTML = '⚠️';
+    warningIcon.style.fontSize = '18px';
+    contentWrapper.appendChild(warningIcon);
+    
+    // Texto da mensagem
+    const warningText = document.createElement('span');
+    warningText.textContent = 'Este recurso só está disponível em domínios autorizados da ESL Cloud';
+    warningText.style.fontSize = '14px';
+    contentWrapper.appendChild(warningText);
+    
+// Container para os botões (mantenha isso)
+const buttonsContainer = document.createElement('div');
+buttonsContainer.style.cssText = `
+  display: flex;
+  gap: 10px;
+  margin-left: 10px;
+`;
+
+// --- BOTÃO IBL LOGÍSTICA ---
+const iblButton = document.createElement('button');
+iblButton.style.cssText = `
+  padding: 4px 12px;
+  background-color: #ffc107;
+  color: #856404;
+  border: 1px solid #d39e00;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+`;
+
+// Ícone SVG para IBL (cadeado)
+const iblIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+iblIcon.setAttribute('width', '14');
+iblIcon.setAttribute('height', '14');
+iblIcon.setAttribute('viewBox', '0 0 24 24');
+iblIcon.style.marginRight = '5px';
+
+const iblPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+iblPath.setAttribute('fill', '#856404');
+iblPath.setAttribute('d', 'M12,2L4,5v6.09c0,5.05 3.41,9.76 8,10.91c4.59-1.15 8-5.86 8-10.91V5L12,2z');
+iblIcon.appendChild(iblPath);
+
+iblButton.appendChild(iblIcon);
+iblButton.appendChild(document.createTextNode('IBL Logística'));
+
+// --- BOTÃO LOGIC LOG ---
+const logicButton = document.createElement('button');
+logicButton.style.cssText = `
+  padding: 4px 12px;
+  background-color: #17a2b8;
+  color: white;
+  border: 1px solid #117a8b;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+`;
+
+// Ícone SVG para Logic Log (cubo)
+const logicIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+logicIcon.setAttribute('width', '14');
+logicIcon.setAttribute('height', '14');
+logicIcon.setAttribute('viewBox', '0 0 24 24');
+logicIcon.style.marginRight = '5px';
+
+const logicPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+logicPath.setAttribute('fill', 'white');
+logicPath.setAttribute('d', 'M21,16.5c0,0.38-0.21,0.71-0.53,0.88l-7.9,4.44c-0.16,0.12-0.36,0.18-0.57,0.18c-0.21,0-0.41-0.06-0.57-0.18l-7.9-4.44 C3.21,17.21,3,16.88,3,16.5v-9c0-0.38,0.21-0.71,0.53-0.88l7.9-4.44c0.16-0.12,0.36-0.18,0.57-0.18c0.21,0,0.41,0.06,0.57,0.18 l7.9,4.44C20.79,6.79,21,7.12,21,7.5V16.5z');
+logicIcon.appendChild(logicPath);
+
+logicButton.appendChild(logicIcon);
+logicButton.appendChild(document.createTextNode('Logic Log'));
+
+// --- COMPORTAMENTOS ---
+iblButton.onclick = () => window.open('https://ibllogistica.eslcloud.com.br', '_blank');
+logicButton.onclick = () => window.open('https://logiclog.eslcloud.com.br', '_blank');
+
+// Efeitos hover
+iblButton.onmouseover = () => { iblButton.style.backgroundColor = '#e0a800'; };
+iblButton.onmouseout = () => { iblButton.style.backgroundColor = '#ffc107'; };
+
+logicButton.onmouseover = () => { logicButton.style.backgroundColor = '#138496'; };
+logicButton.onmouseout = () => { logicButton.style.backgroundColor = '#17a2b8'; };
+
+// Adiciona ao container
+buttonsContainer.appendChild(iblButton);
+buttonsContainer.appendChild(logicButton);
+contentWrapper.appendChild(buttonsContainer);
+    
+    // Botão de fechar
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      background: none;
+      border: none;
+      color: #856404;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0 8px;
+      margin-left: 10px;
+      transition: transform 0.2s ease;
+    `;
+    
+    // Efeito hover no botão
+    closeButton.onmouseover = () => closeButton.style.transform = 'scale(1.3)';
+    closeButton.onmouseout = () => closeButton.style.transform = 'scale(1)';
+    
+    // Ação de fechar
+    closeButton.onclick = () => {
+      setCookie('esl_warning_closed', 'true', 1); // Expira em 1 dia
+      warningContainer.style.opacity = '0';
+      setTimeout(() => warningContainer.remove(), 500);
+    };
+    contentWrapper.appendChild(closeButton);
+    
+    // Adiciona ao corpo do documento
+    document.body.appendChild(warningContainer);
+    
+    // Animação da barra de progresso (15 segundos)
+    const duration = 15000; // 15 segundos
+    let startTime = Date.now();
+    
+    const animateProgressBar = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = 1 - (elapsed / duration);
+      
+      if (progress <= 0) {
+        progressBar.style.transform = 'scaleX(0)';
+        closeButton.click();
+        return;
+      }
+      
+      progressBar.style.transform = `scaleX(${progress})`;
+      requestAnimationFrame(animateProgressBar);
+    };
+    
+    animateProgressBar();
+    
+    // Adiciona os estilos CSS dinamicamente
+    addWarningStyles();
+  }
+
+  function addWarningStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideDown {
+        from { transform: translateY(-100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      
+      #esl-domain-warning {
+        animation: slideDown 0.5s ease-out;
+      }
+      
+      #esl-domain-warning a:hover {
+        color: #5a4a00;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+  }
+
+  function getCookie(name) {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [cookieName, cookieValue] = cookie.split('=').map(c => c.trim());
+      if (cookieName === name) {
+        return cookieValue;
+      }
+    }
+    return '';
+  }
+
+class Utils {
+  static getTodayBRDate(daysOffset = 0) {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+  }
+
+  static formatDate(date) {
+    if (!date) return 'N/A';
+    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = date.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleDateString('pt-BR');
+  }
+
+  static async getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+  }
+
+  static createElement(tag, attributes = {}, styles = {}) {
+    const element = document.createElement(tag);
+    Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+    Object.entries(styles).forEach(([key, value]) => element.style[key] = value);
+    return element;
+  }
+
+  static async sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
+class ApiService {
+  constructor(config) {
+    this.config = config;
+    this.activeRequests = 0;
+    this.maxRequests = 100; // Mais requisições paralelas
+    this.requestQueue = [];
+    this.pendingRequests = new Map();
+    this.cache = new Map(); // Cache simples
+    this.setupFetchInterceptor();
+  }
+
+setupFetchInterceptor() {
+  const originalFetch = window.fetch;
+  const self = this;
+
+  window.fetch = async function(...args) {
+    try {
+      const response = await originalFetch(...args);
+      
+      if (!response.ok) {
+        let errorData;
+        
+        // Tenta parsear como JSON, depois como texto (para HTML)
+        try {
+          errorData = await response.clone().json();
+        } catch (e) {
+          errorData = await response.clone().text();
+        }
+        
+        const error = new Error(response.statusText);
+        error.url = args[0];
+        error.status = response.status;
+        error.response = errorData;
+        
+        throw error;
+      }
+      
+      return response;
+    } catch (error) {
+      const normalizedError = self.handleApiError(error);
+      throw normalizedError;
+    }
+  };
+}
+
+  async fetchWithDelay(url, options) {
+    const loadingElement = Utils.createElement('div', {
+      id: `loading-${Date.now()}`,
+      className: 'api-loading-indicator'
+    }, {
+      position: 'fixed',
+      top: '10px',
+      right: '10px',
+      padding: '10px',
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      color: 'white',
+      borderRadius: '4px',
+      zIndex: '10000'
+    });
+    
+    while (this.activeRequests >= this.maxRequests) {
+      await Utils.sleep(this.config.UI.DELAY_MS);
+    }
+    
+    this.activeRequests++;
+    try {
+      return await fetch(url, options);
+    } finally {
+      this.activeRequests--;
+      loadingElement.remove();
+    }
+  }
+
+  async fetchWithCache(url, options = {}, cacheKey, ttl = 30000) {
+    // Verificação adicional de segurança
+    if (!url) throw new Error('URL não fornecida');
+    
+    const now = Date.now();
+    const cached = this.cache.get(cacheKey);
+    
+    if (cached && (now - cached.timestamp < ttl)) {
+      return cached.data;
+    }
+
+    // Garante que os parâmetros são corretamente serializados
+    const fullUrl = options.params 
+      ? `${url}?${new URLSearchParams(options.params)}`
+      : url;
+
+    const response = await this.fetchWithDelay(fullUrl, {
+      method: options.method || 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': await Utils.getCSRFToken(),
+        ...options.headers
+      },
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+    this.cache.set(cacheKey, { data, timestamp: now });
+    return data;
+  }
+
+async fetchJSON(url, options = {}) {
+  const cacheKey = `json_${url}_${JSON.stringify(options)}`;
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': await Utils.getCSRFToken(),
+      ...options.headers
+    },
+    credentials: 'include'
+  }, cacheKey);
+
+  if (!response.ok) {
+    const error = new Error(`HTTP ${response.status}`);
+    error.status = response.status;
+    error.url = url;
+    try {
+      error.response = await response.json(); // Tenta obter detalhes do erro
+    } catch (error) {
+      error.response = await response.text();
+    }
+    this.cache.delete(cacheKey); // Remove do cache se falhar
+    throw error;
+  }
+
+  return response.json();
+}
+
+async postForm(url, formData, method = 'POST') {
+  try {
+    const response = await this.fetchWithDelay(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-Token': await Utils.getCSRFToken()
+      },
+      credentials: 'include',
+      body: formData
+    });
+
+    const contentType = response.headers.get('content-type');
+    return contentType.includes('application/json') 
+      ? response.json() 
+      : response.text();
+
+  } catch (error) {
+    // Adiciona contexto adicional ao erro
+    error.operation = 'postForm';
+    error.requestData = formData.toString();
+    throw error;
+  }
+}
+
+  clearCache() {
+    this.cache.clear();
+    this.pendingRequests.clear();
+  }
+
+  // Métodos específicos
+async getManifests(params = {}) {
+  const apiUrls = this.config.getApiUrls();
+  
+  // Remove corporation_id se já estiver nos params para evitar duplicação
+  const { ['search[manifests][corporation_id][]']: _, ...cleanParams } = params;
+  
+  const query = new URLSearchParams({
+    'search[manifests][corporation_id][]': apiUrls.MANIFESTS.CORPORATION_ID, // Sempre usa o ID correto
+    ...cleanParams
+  });
+  
+  return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}?${query}`);
+}
+
+  async getManifestEditDetails(id) {
+    const apiUrls = this.config.getApiUrls();
+    return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}/${id}/edit`);
+  }
+
+  async getManifestDetails(id) {
+    const apiUrls = this.config.getApiUrls();
+    return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}/${id}`);
+  }
+
+  async getCiotForManifest(manifestId) {
+    // Chamada direta sem cache - será usada SOMENTE quando necessário
+    return this.fetchJSON(
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/for_manifest?manifest_id=${manifestId}`
+    );
+  }
+
+  async getMdfeGroups(manifestId) {
+    const apiUrls = this.config.getApiUrls();
+    return this.fetchJSON(`${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/mdfe_groups`);
+  }
+
+async updateManifestStatus(manifestId, status) {
+  const apiUrls = this.config.getApiUrls();
+  const formData = new URLSearchParams();
+  formData.append('manifest[status]', status);
+  
+  try {
+    // 1. Obter os dados atuais do manifesto
+    const currentManifest = await this.getManifestDetails(manifestId);
+    const now = new Date();
+    
+    // 2. Tratamento para status 'in_transit'
+    if (status === 'in_transit') {
+      // Preserva departure_at existente ou usa data atual
+      const departuredAt = currentManifest.departure_at 
+                        ? new Date(currentManifest.departure_at) 
+                        : now;
+      formData.append('manifest[departured_at]', departuredAt.toISOString());
+      
+      // Preserva closed_at existente se houver
+      if (currentManifest.closed_at) {
+        formData.append('manifest[closed_at]', new Date(currentManifest.closed_at).toISOString());
+      }
+    }
+    // 3. Tratamento para status 'closed'
+    else if (status === 'closed') {
+      // Preserva closed_at existente ou usa data atual
+      const closedAt = currentManifest.closed_at 
+                     ? new Date(currentManifest.closed_at) 
+                     : now;
+      formData.append('manifest[closed_at]', closedAt.toISOString());
+      
+      // Preserva departure_at existente se houver
+      if (currentManifest.departure_at) {
+        formData.append('manifest[departured_at]', new Date(currentManifest.departure_at).toISOString());
+      }
+    }
+    
+    // 4. Log de auditoria (opcional)
+    this.logManifestUpdate(manifestId, status, currentManifest, formData);
+    
+    // 5. Executa a atualização
+    return this.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}`,
+      formData,
+      'PUT'
+    );
+    
+  } catch (error) {
+    console.error(`Falha ao atualizar status do manifesto ${manifestId}:`, error);
+    throw this.formatManifestError(error, manifestId);
+  }
+}
+
+// Métodos auxiliares adicionados para melhor organização
+logManifestUpdate(manifestId, status, currentData, formData) {
+  console.debug(`[Manifest Update] ID: ${manifestId}`, {
+    previousStatus: currentData.status,
+    newStatus: status,
+    previousDates: {
+      departure: currentData.departure_at,
+      closed: currentData.closed_at
+    },
+    sendingDates: {
+      departure: formData.get('manifest[departured_at]'),
+      closed: formData.get('manifest[closed_at]')
+    }
+  });
+}
+
+formatManifestError(error, manifestId) {
+  const errorDetails = error.response || {};
+  const errorMessages = this.apiService.extractErrorMessages(errorDetails);
+  const errorMessage = errorMessages[0] || error.message || 'Erro desconhecido';
+  
+  return new Error(`Falha ao atualizar manifesto ${manifestId}: ${errorMessage}`);
+}
+
+/**
+ * Manipula erros de API e exibe feedback ao usuário
+ * @param {Object} error - Objeto de erro da API
+ * @param {string} error.url - URL da requisição que falhou
+ * @param {number} error.status - Código HTTP de status
+ * @param {string} error.statusText - Texto do status HTTP
+ */
+handleApiError(error) {
+  // 1. Normaliza o objeto de erro
+  const normalizedError = this.normalizeError(error);
+  
+  // 2. Extrai mensagens de erro de todas as fontes possíveis
+  const errorMessages = this.extractErrorMessages(normalizedError.response);
+  
+  // 3. Cria mensagem principal combinando todas as mensagens encontradas
+  const combinedMessage = errorMessages.length > 0 
+    ? errorMessages.join(',').split(',')[0] + ' | ' + errorMessages.join(',').split(',')[1]
+    : normalizedError.statusText;
+
+  // 4. Dispara evento com estrutura padronizada
+  document.dispatchEvent(new CustomEvent('apiError', {
+    detail: {
+      message: combinedMessage,
+      details: {
+        ...normalizedError,
+        extractedErrors: errorMessages
+      }
+    }
+  }));
+
+  return normalizedError;
+}
+
+normalizeError(error) {
+  // Garante que temos um objeto de erro válido
+  if (!error || typeof error !== 'object') {
+    return {
+      status: 0,
+      statusText: 'Erro desconhecido',
+      url: 'N/A',
+      response: null
+    };
+  }
+
+  return {
+    url: error.url || 'URL desconhecida',
+    status: error.status || 0,
+    statusText: error.statusText || 'Erro desconhecido',
+    response: error.response || null
+  };
+}
+
+extractErrorMessages(response) {
+  const messages = new Set();
+  
+  if (!response) return [];
+  
+  // 1. Tenta formatted_errors (formato ESL alternativo)
+  if (response.formatted_errors?.length) {
+    response.formatted_errors.forEach(msg => messages.add(msg));
+  }
+  
+  // 2. Tenta errors (formato Rails padrão)
+  if (response.errors && typeof response.errors === 'object') {
+    Object.values(response.errors).flat().forEach(msg => messages.add(msg));
+  }
+
+  // 3. Tenta extrair de errors.base[0] (formato ESL)
+  if (response.errors?.base?.[0]) {
+    messages.add(response.errors.base[0]);
+  }
+  
+  // 4. Tenta message (formato comum)
+  if (response.message) {
+    messages.add(response.message);
+  }
+  
+  // 5. Se for HTML, extrai texto do body
+  if (typeof response === 'string' && response.startsWith('<!DOCTYPE')) {
+    const htmlMessage = this.extractFromHtml(response);
+    if (htmlMessage) messages.add(htmlMessage);
+  }
+  
+  return Array.from(messages);
+}
+
+extractFromHtml(html) {
+  // Implementação simples de extração de texto de HTML
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const errorElement = doc.querySelector('.error, .alert, .message, h1');
+  return errorElement?.textContent?.trim() || null;
+ }
+}
+
+class ManifestProcessor {
+  constructor(config, apiService) {
+    this.config = config;
+    this.apiService = apiService;
+  }
+
+  async processManifestsParallel(response) {
+    // Verificação segura dos dados de entrada
+    if (!response || !Array.isArray(response)) {
+      console.warn('Dados de manifestos inválidos:', response);
+      return {
+        mdfeData: { manifests: { noMdfe: [], pendentes: [], open: [] } },
+        ciotData: { manifests: { noCiot: [], pendentes: [], open: [] } },
+        statusData: { manifests: { pending: [], inTransit: [], closed: [] } }
+      };
+    }
+
+    try {
+      // Pré-processamento seguro
+      const preProcessed = response.map(m => ({
+        ...m,
+        status: this.normalizeStatus(m.status)
+      }));
+
+      const [mdfeData, ciotData, statusData] = await Promise.all([
+        this.processMdfeData(preProcessed),
+        this.processCiotData(preProcessed),
+        this.processStatusData(preProcessed)
+      ]);
+
+      return { mdfeData, ciotData, statusData };
+    } catch (error) {
+      console.error('Erro no processamento paralelo:', error);
+      throw error;
+    }
+  }
+
+  normalizeStatus(status) {
+    const statusMap = {
+      '': 'pending',
+      'pending': 'pending',
+      'in_transit': 'in_transit',
+      'closed': 'closed',
+      'canceled': 'closed'
+    };
+    return statusMap[status?.toLowerCase()] || 'pending';
+  }
+
+processStatusData(manifests) {
+  // 1. Processa os status
+  const processedManifests = manifests.map(manifest => {
+    const statusMap = {
+      '': 'pending',
+      'pending': 'pending',
+      'in_transit': 'in_transit',
+      'closed': 'closed',
+     // 'canceled': 'closed'
+    };
+    
+    return {
+      ...manifest,
+      status: statusMap[manifest.status?.toLowerCase()] || 'pending'
+    };
+  });
+
+  // 2. Agora separa em arrays por status
+  const result = {
+    pending: [],
+    inTransit: [],
+    closed: []
+  };
+
+  processedManifests.forEach(manifest => {
+    if (manifest.status === 'pending') {
+      result.pending.push(manifest);
+    } else if (manifest.status === 'in_transit') {
+      result.inTransit.push(manifest);
+    } else if (manifest.status === 'closed') {
+      result.closed.push(manifest);
+    }
+  });
+
+  // 3. Ordenação (mantendo sua lógica original)
+  const sortManifests = (a, b) => {
+    const numA = parseInt(a.manifest_number || a.sequence_code) || 0;
+    const numB = parseInt(b.manifest_number || b.sequence_code) || 0;
+    return numB - numA;
+  };
+
+  result.pending.sort(sortManifests);
+  result.inTransit.sort(sortManifests);
+  result.closed.sort(sortManifests);
+
+  return result;
+}
+
+  async enrichManifest(manifest) {
+    try {
+      const details = await this.apiService.getManifestDetails(manifest.id);
+      return {
+        ...manifest,
+        driver: details.driver_name || details.driver || manifest.driver,
+        vehicle_plate: details.vehicle_license_plate || details.vehicle_plate || manifest.vehicle_plate
+      };
+    } catch (error) {
+      console.warn(`Falha ao enriquecer manifesto ${manifest.id}:`, error);
+      return manifest;
+    }
+  }
+
+  async enrichManifests(manifests) {
+    return Promise.all(manifests.map(m => this.enrichManifest(m)));
+  }
+
+  processMdfeData(manifests) {
+    const result = { noMdfe: [], pendentes: [], open: [] };
+
+    manifests.forEach(m => {
+      const hasDestination = m.manifest_destination?.trim() !== '';
+      const notBeloHorizonte = m.manifest_destination?.trim().toLowerCase() !== 'belo horizonte';
+      const notClosed = m.status?.toLowerCase() !== 'closed';
+
+      if (!m.doc_e_id && !m.generate_mdfe && notClosed && hasDestination && notBeloHorizonte) {
+        result.noMdfe.push(m);
+      } else if (m.generate_mdfe && ['pending', 'rejected', 'ready'].includes(m.mdfe_status)) {
+        result.pendentes.push(m);
+      } else if (m.mdfe_status === 'issued') {
+        result.open.push(m);
+      }
+    });
+
+    // Ordenação
+    const sortManifests = (a, b) => {
+      const numA = parseInt(a.manifest_number || a.sequence_code) || 0;
+      const numB = parseInt(b.manifest_number || b.sequence_code) || 0;
+      return numB - numA;
+    };
+
+    result.noMdfe.sort(sortManifests);
+    result.pendentes.sort(sortManifests);
+    result.open.sort(sortManifests);
+
+    return result;
+  }
+
+processCiotData(manifests) {
+  // 1. Processa os status dos CIOTs
+  const processedManifests = manifests.map(manifest => {
+    const statusMap = {
+      '': 'no_ciot',
+      'pending': 'pending',
+      'sending': 'pending',
+      'send_error': 'pending',
+      'cancelling': 'open',
+      'sent': 'open',
+      'open': 'open',
+      'closed': 'open'
+    };
+    
+    return {
+      ...manifest,
+      ciot_status: statusMap[manifest.ciot_status?.toLowerCase()] || 'no_ciot'
+    };
+  });
+
+  // 2. Separa em arrays por status
+  const result = {
+    noCiot: [],     // Manifestos sem CIOT
+    pendentes: [],  // CIOTs pendentes
+    open: []        // CIOTs abertos/ativos
+  };
+
+  processedManifests.forEach(manifest => {
+    if (manifest.ciot_status === 'no_ciot') {
+      result.noCiot.push(manifest);
+    } else if (manifest.ciot_status === 'pending') {
+      result.pendentes.push(manifest);
+    } else if (manifest.ciot_status === 'open') {
+      result.open.push(manifest);
+    }
+  });
+
+  // 3. Ordenação por sequence_code (decrescente)
+  const sortManifests = (a, b) => {
+    const numA = parseInt(a.manifest_number || a.sequence_code) || 0;
+    const numB = parseInt(b.manifest_number || b.sequence_code) || 0;
+    return numB - numA; // Ordem decrescente
+  };
+
+  // Aplica ordenação a todas as listas
+  result.noCiot.sort(sortManifests);
+  result.pendentes.sort(sortManifests);
+  result.open.sort(sortManifests);
+
+  return result;
+ }
+}
+
+class UIManager {
+  constructor(config) {
+    this.config = config;
+    this.elements = {};
+  }
+
+  registerElements() {
+    try {
+      this.elements = {
+        // Elementos principais
+        panel: document.getElementById('control-panel'),
+        panelHeader: document.getElementById('panel-header'),
+        panelStatus: document.getElementById('panel-status'),
+        batchProgress: document.getElementById('batch-progress'),
+        
+        // Abas
+        tabMdfe: document.getElementById('tab-mdfe'),
+        tabCiot: document.getElementById('tab-ciot'),
+        tabStatus: document.getElementById('tab-status'),
+        
+        // Filtros
+        startDate: document.getElementById('start-date'),
+        endDate: document.getElementById('end-date'),
+        loadDataBtn: document.getElementById('load-data'),
+        
+        // Painel MDF-e
+        mdfePanel: document.getElementById('mdfe-panel'),
+        selNo: document.getElementById('sel-no'),
+        selPend: document.getElementById('sel-pend'),
+        selOpen: document.getElementById('sel-open'),
+        selAllNo: document.getElementById('sel-all-no'),
+        cancelNo: document.getElementById('cancel-no'),
+        doGenerate: document.getElementById('do-generate'),
+        selAllPend: document.getElementById('sel-all-pend'),
+        doCancelPend: document.getElementById('do-cancel-pend'),
+        doIssue: document.getElementById('do-issue'),
+        selAllOpen: document.getElementById('sel-all-open'),
+        doCancelOpen: document.getElementById('do-cancel-open'),
+        doClose: document.getElementById('do-close'),
+        
+        // Painel CIOT
+        ciotPanel: document.getElementById('ciot-panel'),
+        ciotListNo: document.getElementById('ciot-list-no'),
+        ciotListPendente: document.getElementById('ciot-list-pendente'),
+        ciotListOpen: document.getElementById('ciot-list-open'),
+        ciotSelAllNo: document.getElementById('ciot-sel-all-no'),
+        ciotCancelNo: document.getElementById('ciot-cancel-no'),
+        doSaveCiot: document.getElementById('do-save-ciot'),
+        ciotSelAllPendente: document.getElementById('ciot-sel-all-pendente'),
+        doCancelCiot: document.getElementById('do-cancel-ciot'),
+        doIntegrarCiot: document.getElementById('do-integrar-ciot'),
+        ciotSelAllOpen: document.getElementById('ciot-sel-all-open'),
+        doCancelCiotEnviado: document.getElementById('do-cancel-ciot-enviado'),
+
+        // Painel Status
+        statusPanel: document.getElementById('status-panel'),
+        selPending: document.getElementById('sel-pending'),
+        selInTransit: document.getElementById('sel-in-transit'),
+        selClosed: document.getElementById('sel-closed'),
+        doFinish: document.getElementById('do-finish'),
+        selAllPending: document.getElementById('sel-all-pending'),
+        doStartTransport: document.getElementById('do-start-transport'),
+        selAllInTransit: document.getElementById('sel-all-in-transit'),
+        doUnlock: document.getElementById('do-unlock'),
+        selAllClosed: document.getElementById('sel-all-closed'),
+        doReverse: document.getElementById('do-reverse'),
+        
+        // Contadores
+        countNo: document.getElementById('count-no'),
+        countPend: document.getElementById('count-pend'),
+        countOpen: document.getElementById('count-open'),
+        countCiotNo: document.getElementById('count-ciot-no'),
+        countCiotPend: document.getElementById('count-ciot-pend'),
+        countCiotOpen: document.getElementById('count-ciot-open'),
+        countPending: document.getElementById('count-pending'),
+        countInTransit: document.getElementById('count-in-transit'),
+        countClosed: document.getElementById('count-closed')
+      };
+    } catch (error) {
+      console.error('Erro ao registrar elementos:', error);
+    }
+  }
+
+setStatus(message, type = 'info', duration = null) {
+  const statusElement = this.elements.panelStatus;
+  if (!statusElement) return;
+
+  // Limpa mensagens muito longas
+  const shortMessage = message.length > 300 
+    ? `${message.substring(0, 300)}...` 
+    : message;
+
+  statusElement.innerHTML = `
+    <div style="margin-bottom: 4px;">
+      ${this.getStatusIcon(type)} <strong>${shortMessage}</strong>
+    </div>
+    <div style="font-size: 12px; color: #666;">
+      ${new Date().toLocaleTimeString()}
+    </div>
+  `;
+
+  this.applyStatusStyles(statusElement, type);
+  
+  // Limpa automaticamente após o tempo especificado
+  if (duration > 0) {
+    setTimeout(() => {
+      if (statusElement.innerHTML.includes(shortMessage)) {
+        this.clearStatus();
+      }
+    }, duration);
+  }
+}
+
+  /**
+   * Retorna ícone indicador de status
+   */
+  getStatusIndicator(status) {
+    const indicators = {
+      'pending': ' ⏳',
+      'in_transit': ' 🚛',
+      'closed': ' ✅',
+      'rejected': ' ❌',
+      'send_error': ' ❌'
+    };
+    return indicators[status] || '';
+  }
+ 
+  getStatusIcon(type) {
+    const icons = {
+      error: '❌',
+      success: '✅',
+      loading: '⏳',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+    return icons[type] || '';
+  }
+
+  applyStatusStyles(element, type) {
+    const styles = {
+    error: { backgroundColor: '#f8d7da', color: '#721c24', borderLeft: '4px solid #e74c3c' },
+    success: { backgroundColor: '#d4edda', color: '#155724', borderLeft: '4px solid #2ecc71' },
+    loading: { backgroundColor: '#cce5ff', color: '#004085', borderLeft: '4px solid #3498db' },
+    warning: { backgroundColor: '#cce5ff', color: '#004085', borderLeft: '4px solid #3498db' },
+    info: { backgroundColor: '#cce5ff', color: '#004085', borderLeft: '4px solid #3498db' },
+    default: { backgroundColor: '#e9ecef', color: '#495057', borderLeft: '4px solid #3498db' }
+  };
+    Object.assign(element.style, styles[type] || {});
+  }
+
+clearStatus() {
+  // Limpa a mensagem sem mostrar "Carregando..."
+  const statusElement = document.getElementById('panel-status'); // ajuste o seletor conforme seu HTML
+  if (statusElement) {
+    statusElement.textContent = '';
+    statusElement.style.backgroundColor = '';
+    statusElement.style.borderLeft = '';
+    // statusElement.innerHTML = '';
+    // statusElement.className = 'panel-status';
+    // statusElement.style.color = '';
+    // statusElement.appendChild = '';
+  }
+}
+
+renderUnifiedLists(data, activeTab) {
+  // Cache de formatação seguro (com limite de tamanho)
+  const formatCache = new Map();
+  const clearCacheIfNeeded = () => {
+    if (formatCache.size > 100) { // Limite de 100 itens no cache
+      const oldestKey = formatCache.keys().next().value;
+      formatCache.delete(oldestKey);
+    }
+  };
+
+  const renderList = (elementId, items, formatter) => {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    // Usa requestAnimationFrame para renderização não-bloqueante
+    requestAnimationFrame(() => {
+      element.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        const option = document.createElement('option');
+        option.textContent = 'Nenhum item encontrado';
+        option.disabled = true;
+        element.appendChild(option);
+        return;
+      }
+
+      // Controle de itens únicos
+      const uniqueItems = new Map();
+      
+      // Processamento em chunks com eliminação de duplicatas
+      const chunkSize = 50;
+      let index = 0;
+
+      const renderChunk = () => {
+        const chunkEnd = Math.min(index + chunkSize, items.length);
+        
+        for (; index < chunkEnd; index++) {
+          const item = items[index];
+          try {
+            // Verificação de duplicatas
+            const itemKey = item.manifest?.id || item.id || JSON.stringify(item);
+            if (uniqueItems.has(itemKey)) continue;
+            
+            uniqueItems.set(itemKey, true); // Marca como processado
+
+            let formatted;
+            const cacheKey = `${itemKey}_${activeTab}`;
+            
+            if (formatCache.has(cacheKey)) {
+              formatted = formatCache.get(cacheKey);
+            } else {
+              formatted = formatter(item);
+              clearCacheIfNeeded(); // Verifica limite antes de adicionar
+              formatCache.set(cacheKey, formatted);
+            }
+
+            const option = document.createElement('option');
+            option.value = item.manifest?.id || item.id || '';
+            option.textContent = formatted.display;
+            option.title = formatted.tooltip;
+            element.appendChild(option);
+          } catch (e) {
+            console.error('Erro ao renderizar item:', e);
+          }
+        }
+
+        if (index < items.length) {
+          setTimeout(renderChunk, 0); // Continua assincronamente
+        }
+      };
+
+      renderChunk();
+    });
+  };
+
+  switch (activeTab) {
+    case 'mdfe':
+      renderList('sel-no', data.MDFeSystem?.manifests?.noMdfe || [], this.formatManifestInfo.bind(this));
+      renderList('sel-pend', data.MDFeSystem?.manifests?.pendentes || [], this.formatManifestInfo.bind(this));
+      renderList('sel-open', data.MDFeSystem?.manifests?.open || [], this.formatManifestInfo.bind(this));
+      break;
+      
+    case 'ciot':
+      renderList('ciot-list-no', data.CiotSystem?.manifests?.noCiot || [], this.formatCiotInfo.bind(this));
+      renderList('ciot-list-pendente', data.CiotSystem?.manifests?.pendentes || [], this.formatCiotInfo.bind(this));
+      renderList('ciot-list-open', data.CiotSystem?.manifests?.open || [], this.formatCiotInfo.bind(this));
+      break;
+      
+    case 'status':
+      renderList('sel-pending', data.StatusSystem?.manifests?.pending || [], this.formatStatusInfo.bind(this));
+      renderList('sel-in-transit', data.StatusSystem?.manifests?.inTransit || [], this.formatStatusInfo.bind(this));
+      renderList('sel-closed', data.StatusSystem?.manifests?.closed || [], this.formatStatusInfo.bind(this));
+      break;
+  }
+}
+
+formatManifestInfo(manifest) {
+  const mainInfo = `#${manifest.sequence_code}`;
+  const vehicleInfo = manifest.vehicle_license_plate;
+  const driverInfo = manifest.main_driver_name.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase());
+  const dateInfo = Utils.formatDate(manifest.service_date);
+  const destInfo = manifest.manifest_destination || '';
+  const statusInfo = this.getStatusIndicator(manifest.status_formatted);
+
+  return {
+    display: `${mainInfo}${statusInfo}\n📅 ${dateInfo}\n🚗 ${vehicleInfo} | 👤 ${driverInfo.split(' ')[0]} | 📍 ${destInfo}`,
+    tooltip: `Manifesto: #${manifest.sequence_code} | ID: ${manifest.id}\nVeículo: ${vehicleInfo}\nMotorista: ${driverInfo}\nData: ${dateInfo}\nDestino: ${destInfo}\nStatus: ${manifest?.status_formatted}\n\n════ DADOS MDF-e ════\nStatus MDF-e: ${manifest?.mdfe_status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/A'}`
+  };
+}
+
+formatStatusInfo(manifest) {
+  const mainInfo = `#${manifest.sequence_code}`;
+  const vehicleInfo = manifest.vehicle_license_plate;
+  const driverInfo = manifest.main_driver_name?.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/D';
+  const dateInfo = Utils.formatDate(manifest.service_date);
+  const destInfo = manifest.manifest_destination || 'N/D';
+  const statusInfo = this.getStatusIndicator(manifest.status_formatted);
+
+  return {
+    display: `${mainInfo}${statusInfo}\n📅 ${dateInfo}\n🚗 ${vehicleInfo} | 👤 ${driverInfo.split(' ')[0]} | 📍 ${destInfo}`,
+    tooltip: `Manifesto: ${manifest.sequence_code} | ID: ${manifest.id}\nVeículo: ${vehicleInfo}\nMotorista: ${driverInfo}\nData: ${dateInfo}\nDestino: ${destInfo}\nStatus: ${manifest?.status_formatted || manifest?.status || 'N/A'}`
+  };
+}
+
+formatCiotInfo(item) {
+  const manifest = item.manifest || item;
+  const ciot = item.ciot || (item.ciot_number ? item : null);
+  const manifestInfo = this.formatStatusInfo(manifest);
+  
+  return {
+    display: `${manifestInfo.display} | CIOT: ${ciot?.number || ciot?.ciot_number || 'N/D'}`,
+    tooltip: `${manifestInfo.tooltip}\n\n════ DADOS CIOT ════\nCIOT: ${ciot?.number || ciot?.ciot_number || 'N/D'}\nIntegração: ${ciot?.ciot_integration_result || 'N/A'}\nStatus CIOT: ${ciot?.ciot_status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || ciot?.status.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) || 'N/A'}`,
+  };
+}
+
+updateCounters(data) {
+  if (!data) return;
+  
+  // Contadores MDF-e
+  this.updateCounter('count-no', data.MDFeSystem?.manifests?.noMdfe?.length || 0);
+  this.updateCounter('count-pend', data.MDFeSystem?.manifests?.pendentes?.length || 0);
+  this.updateCounter('count-open', data.MDFeSystem?.manifests?.open?.length || 0);
+  
+  // Contadores CIOT
+  this.updateCounter('count-ciot-no', data.CiotSystem?.manifests?.noCiot?.length || 0);
+  this.updateCounter('count-ciot-pend', data.CiotSystem?.manifests?.pendentes?.length || 0);
+  this.updateCounter('count-ciot-open', data.CiotSystem?.manifests?.open?.length || 0);
+  
+  // Contadores Status
+  this.updateCounter('count-pending', data.StatusSystem?.manifests?.pending?.length || 0);
+  this.updateCounter('count-in-transit', data.StatusSystem?.manifests?.inTransit?.length || 0);
+  this.updateCounter('count-closed', data.StatusSystem?.manifests?.closed?.length || 0);
+}
+
+  updateCounter(elementId, count) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = count;
+      element.classList.toggle('has-items', count > 0);
+    }
+  }
+
+  clearAllLists() {
+    const listIds = [
+      'sel-no', 'sel-pend', 'sel-open',
+      'ciot-list-no', 'ciot-list-pendente', 'ciot-list-open',
+      'sel-pending', 'sel-in-transit', 'sel-closed'
+    ];
+    
+    listIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.innerHTML = '';
+        const option = document.createElement('option');
+        option.textContent = 'Carregando...';
+        option.disabled = true;
+        element.appendChild(option);
+      }
+    });
+    
+    // Resetar contadores
+    this.updateCounters({
+      MDFeSystem: { manifests: { noMdfe: [], pendentes: [], open: [] } },
+      CiotSystem: { manifests: { noCiot: [], pendentes: [], open: [] } },
+      StatusSystem: { manifests: { pending: [], inTransit: [], closed: [] } }
+    });
+  }
+}
+
+class PanelManager {
+constructor(config, apiService, manifestProcessor, uiManager, statusManager) {
+    this.config = config;
+    this.apiService = apiService;
+    this.manifestProcessor = manifestProcessor;
+    this.uiManager = uiManager;
+    this.StatusManager = statusManager; 
+    this.messageManager = new MessageQueueManager(uiManager);
+
+    this.state = {
+      minimized: false,
+      maximized: false,
+      originalSize: { ...config.UI.DEFAULT_PANEL_SIZE },
+      originalPosition: { ...config.UI.DEFAULT_PANEL_POSITION },
+      activeTab: 'status',  // Alterado de 'mdfe' para 'status'
+      operationInProgress: false,
+      lastUpdate: null,
+      refreshIntervalId: null,
+      errorState: {errors: [], hasErrors: false},
+      data: {
+        MDFeSystem: { manifests: { noMdfe: [], pendentes: [], open: [] } },
+        CiotSystem: { manifests: { noCiot: [], pendentes: [], open: [] } },
+        StatusSystem: { manifests: { pending: [], inTransit: [], closed: [] } }
+      }
+    };
+    this.setupGlobalEventListeners();
+    this.manifestCache = new Map();
+  }
+
+async setupGlobalEventListeners() {
+  document.addEventListener('apiError', (e) => {
+    const { message, details } = e.detail;
+    
+    // Inicializa errorState se não existir
+    this.state.errorState = this.state.errorState || {
+      errors: [],
+      hasErrors: false
+    };
+
+    // Registra o erro com todos os detalhes
+    this.state.errorState.errors.push({
+      timestamp: new Date(),
+      message,
+      details,
+      type: 'api'
+    });
+    
+    this.state.errorState.hasErrors = true;
+
+    // Exibe feedback visual (com tratamento para mensagens longas)
+    const displayMessage = message.length > 300 
+      ? `${message.substring(0, 300)}...` 
+      : message;
+    
+    this.uiManager.setStatus(`Erro: ${displayMessage}`, 'error');
+
+    // Log detalhado para desenvolvimento
+    console.group('Erro registrado');
+    console.log('Mensagem:', message);
+    console.log('Status:', details.status);
+    console.log('URL:', details.url);
+    console.log('Erros extraídos:', details.extractedErrors);
+    console.log('Resposta completa:', details.response);
+    console.groupEnd();
+  });
+
+  document.addEventListener('refreshManifests', () => {
+    if (!this.state.operationInProgress) {
+      this.fetchData();
+    }
+  });
+}
+
+initializePanel() {
+    if (document.getElementById('control-panel')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'control-panel';
+    panel.style.cssText = `
+      position: fixed;
+      top: ${this.config.UI.DEFAULT_PANEL_POSITION.top};
+      right: ${this.config.UI.DEFAULT_PANEL_POSITION.right};
+      width: ${this.config.UI.DEFAULT_PANEL_SIZE.width};
+      height: ${this.config.UI.DEFAULT_PANEL_SIZE.height};
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      resize: both;
+      overflow: auto;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    `;
+
+    panel.innerHTML = this.generatePanelHTML();
+    document.body.appendChild(panel);
+    this.uiManager.registerElements();
+    this.setupEventListeners();
+    
+    // Forçar a aba de status como ativa no início
+    this.switchTab('status');
+  }
+
+generatePanelHTML() {
+  const system = CONFIG.getCurrentSystem();
+  return `
+    <div class="panel-header" id="panel-header" style="
+        padding: 12px 16px;
+        background: linear-gradient(to right, #1a3a6d, #2c5282);
+        color: white;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        border-bottom: 1px solid #2c5282;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: grab;
+    ">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 500;">
+          Painel Status | MDF-e | CIOT <small style="font-size: 12px; opacity: 0.8; color: white;">(${system.NAME})</small>
+        </h3>
+        <div style="display: flex; gap: 8px;">
+            <button id="minimize-button" style="background: rgba(255,255,255,0.2); border: none; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center;">_</button>
+            <button id="maximize-button" style="background: rgba(255,255,255,0.2); border: none; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center;">⛶</button>
+            <button id="close-button" style="background: rgba(255,255,255,0.2); border: none; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center;">×</button>
+        </div>
+    </div>
+
+    <div id="panel-status" style="
+        padding: 8px 16px;
+        background-color: #e9ecef;
+        color: #495057;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 13px;
+        display: flex;
+        flex-direction: column;
+    ">
+        <div style="margin-bottom: 8px;">
+            <span style="font-weight: 500; margin-right: 8px;">Status:</span>
+            <span>Pronto</span>
+        </div>
+        <div id="batch-progress"></div>
+        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+            Última atualização: N/A
+        </div>
+    </div>
+
+    <div class="panel-tabs" style="
+        display: flex;
+        background-color: #e9ecef;
+        border-bottom: 1px solid #dee2e6;
+    ">
+        <button id="tab-status" style="flex: 1; padding: 12px; border: none; background-color: #f8f9fa; cursor: pointer; border-bottom: 3px solid #1a3a6d; font-weight: 600; color: #1a3a6d;">Status</button>
+        <button id="tab-mdfe" style="flex: 1; padding: 12px; border: none; background-color: #e9ecef; cursor: pointer; font-weight: 500; color: #6c757d;">MDF-e</button>
+        <button id="tab-ciot" style="flex: 1; padding: 12px; border: none; background-color: #e9ecef; cursor: pointer; font-weight: 500; color: #6c757d;">CIOT</button>
+    </div>
+
+    <div class="panel-content" style="flex-grow: 1; overflow: auto; padding: 16px;">
+      ${this.generateDateFiltersHTML()}
+      ${this.generateStatusPanelHTML()}
+      ${this.generateMdfePanelHTML()}
+      ${this.generateCiotPanelHTML()}
+    </div>
+  `;
+}
+
+  generateDateFiltersHTML() {
+    return `
+      <div class="date-filters" style="margin-bottom: 16px; display: flex; gap: 8px;">
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #495057;">Data inicial</label>
+          <input type="date" id="start-date" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+        </div>
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #495057;">Data final</label>
+          <input type="date" id="end-date" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+        </div>
+        <button id="load-data" style="align-self: flex-end; padding: 8px 16px; background-color: #1a3a6d; color: white; border: none; border-radius: 4px; cursor: pointer;">Carregar</button>
+      </div>
+    `;
+  }
+
+  generateMdfePanelHTML() {
+    return `
+      <div id="mdfe-panel">
+        <!-- Seção Sem MDF-e -->
+        <div class="section" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #1a3a6d;">Sem MDF-e (<span id="count-no">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="sel-all-no" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="cancel-no" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">Cancelar</button>
+              <button id="do-generate" style="padding: 4px 8px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Gerar MDF-e</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="sel-no" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+
+        <!-- Seção Pendentes -->
+        <div class="section" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #ffc107;">Pendentes (<span id="count-pend">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="sel-all-pend" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="do-cancel-pend" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
+              <button id="do-issue" style="padding: 4px 8px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Emitir</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="sel-pend" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+
+        <!-- Seção Emitidos -->
+        <div class="section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #28a745;">Emitidos (<span id="count-open">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="sel-all-open" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="do-cancel-open" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
+              <button id="do-close" style="padding: 4px 8px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Fechar</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="sel-open" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  generateCiotPanelHTML() {
+    return `
+      <div id="ciot-panel" style="display: none;">
+        <!-- Seção Sem CIOT -->
+        <div class="section" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #1a3a6d;">Sem CIOT (<span id="count-ciot-no">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="ciot-sel-all-no" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="ciot-cancel-no" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">Cancelar</button>
+              <button id="do-save-ciot" style="padding: 4px 8px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Salvar</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="ciot-list-no" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+
+        <!-- Seção Pendentes CIOT -->
+        <div class="section" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #ffc107;">Pendentes (<span id="count-ciot-pend">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="ciot-sel-all-pendente" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="do-cancel-ciot" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
+              <button id="do-integrar-ciot" style="padding: 4px 8px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Integrar</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="ciot-list-pendente" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+
+        <!-- Seção Enviados CIOT -->
+        <div class="section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #28a745;">Enviados (<span id="count-ciot-open">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="ciot-sel-all-open" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="do-cancel-ciot-enviado" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="ciot-list-open" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  generateStatusPanelHTML() {
+    return `
+      <div id="status-panel" style="display: none;">
+        <!-- Seção Pendentes -->
+        <div class="section" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #ffc107;">Pendentes (<span id="count-pending">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="sel-all-pending" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="do-start-transport" style="padding: 4px 8px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Iniciar Transporte</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="sel-pending" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+
+        <!-- Seção Em Trânsito -->
+        <div class="section" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #17a2b8;">Em Trânsito (<span id="count-in-transit">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="sel-all-in-transit" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="do-unlock" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Pendente</button>
+              <button id="do-finish" style="padding: 4px 8px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Finalizar</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="sel-in-transit" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+
+        <!-- Seção Finalizados -->
+        <div class="section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #28a745;">Finalizados (<span id="count-closed">0</span>)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button id="sel-all-closed" style="padding: 4px 8px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;">Selecionar todos</button>
+              <button id="do-reverse" style="padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Estornar</button>
+            </div>
+          </div>
+          <div style="overflow: hidden; max-height: 120px; white-space: nowrap;">
+            <select id="sel-closed" multiple style="width: 500px; min-width: 100%; height: 120px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px;"></select>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+/**
+ * Carrega dados dos manifestos
+ * @param {boolean} initialLoad - Se é o primeiro carregamento
+ */
+async fetchData(initialLoad = false) {
+  if (this.state.operationInProgress) return;
+  
+  this.state.operationInProgress = true;
+  const currentTab = this.state.activeTab;
+  
+  try {
+    this.uiManager.setStatus('Carregando dados...', 'loading');
+    
+    // Limpa o cache antes de buscar novos dados
+    this.apiService.clearCache();
+    this.uiManager.clearAllLists();
+
+    // 1. Construir parâmetros de busca UMA VEZ
+    const params = this.buildSearchParams();
+    const queryString = new URLSearchParams(params).toString();
+    const apiUrls = this.config.getApiUrls();
+    const url = `${apiUrls.MANIFESTS.BASE_URL}?${queryString}`;
+    
+    // 2. Fazer APENAS UMA requisição (usando fetchJSON diretamente)
+    const manifestData = await this.apiService.fetchJSON(url);
+    manifestData.forEach(item => {
+      if (item?.id && item?.sequence_code) {
+        this.manifestCache.set(item.id, item.sequence_code);
+      }
+    });
+    
+    // 3. Processar os dados recebidos
+    const { mdfeData, ciotData, statusData } = await this.manifestProcessor.processManifestsParallel(manifestData);
+    
+    // 4. Atualizar estado
+    this.updateState(mdfeData, ciotData, statusData);
+    
+    if (!initialLoad) {
+      this.switchTab(currentTab);
+    }
+    
+    this.showFeedback(manifestData.length, params);
+        
+  } catch (error) {
+    console.error('Erro ao buscar dados:', error);
+    this.uiManager.setStatus(`Falha ao carregar: ${error.message}`, 'error');
+    throw error;
+  } finally {
+    this.state.operationInProgress = false;
+  }
+}
+
+  async init() {
+    if (this.initialized) return;
+    
+    try {
+      this.initialized = true;
+      const system = CONFIG.getCurrentSystem();
+      this.uiManager.setStatus(`Iniciando painel ${system.NAME}...`, 'loading');
+      
+      // 1. Inicializar elementos visuais primeiro
+      this.initializePanel();
+      await this.waitForElements(['control-panel', 'tab-status', 'tab-mdfe', 'tab-ciot']);
+      
+      // 2. Configurar datas padrão
+      this.setDefaultDates();
+      
+      // 3. Carregar dados - com tratamento de erro explícito
+      try {
+        await this.fetchData(true);
+      } catch (error) {
+        console.error('Erro no carregamento inicial:', error);
+        throw error;
+      }
+      
+      // 4. Mostrar aba status como padrão
+      // this.switchTab('status');
+      
+      // 5. Configurar auto-atualização
+      this.setupAutoRefresh();
+      
+    } catch (error) {
+      console.error('Falha crítica na inicialização:', error);
+      this.uiManager.setStatus(`Falha na inicialização: ${error.message}`, 'error');
+      
+      // Tentar reinicializar após 2 segundos
+      setTimeout(() => {
+        this.initialized = false;
+        this.init();
+      }, 2000);
+    }
+  }
+
+  /**
+   * Atualiza o estado com todos os dados
+   */
+  updateState(mdfeData, ciotData, statusData) {
+    this.state.data = {
+      MDFeSystem: { manifests: mdfeData },
+      CiotSystem: { manifests: ciotData },
+      StatusSystem: { manifests: statusData }
+    };
+    this.state.lastUpdate = new Date();
+    
+    // Renderiza as listas do painel ativo
+    this.renderActivePanel();
+    this.uiManager.updateCounters(this.state.data);
+  }
+
+  /**
+   * Renderiza o painel ativo com base no estado atual
+   */
+  renderActivePanel() {
+    switch (this.state.activeTab) {
+      case 'status':
+        this.uiManager.renderUnifiedLists(this.state.data, 'status');
+        break;
+      case 'mdfe':
+        this.uiManager.renderUnifiedLists(this.state.data, 'mdfe');
+        break;
+      case 'ciot':
+        this.uiManager.renderUnifiedLists(this.state.data, 'ciot');
+        break;
+    }
+  }
+
+async processBatch(items, processFn, actionName, batchSize = this.config.UI.BATCH_SIZE) {
+    if (this.state.operationInProgress) {
+      this.uiManager.setStatus('Operação já em andamento. Aguarde a finalização.', 'warning');
+      return [];
+    }
+
+    if (!items || items.length === 0) {
+      this.uiManager.setStatus('Nenhum item selecionado', 'warning');
+      return [];
+    }
+
+    this.state.operationInProgress = true;
+    const total = items.length;
+    let processed = 0;
+    const results = [];
+    const errors = [];
+
+    try {
+      // Mensagem inicial com prioridade normal
+      this.uiManager.setStatus(`Processando ${total} itens (${actionName})...`, 'loading');
+      
+      for (let i = 0; i < total; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchResults = await this.processBatchItems(batch, processFn, results, errors);
+        
+        processed += batch.length;
+        await this.showBatchProgress(processed, total, errors, batchResults, actionName);
+      }
+
+      return await this.finalizeProcessing(results, errors, total, actionName);
+    } catch (error) {
+      console.error(`Erro no ${actionName}:`, error);
+      this.uiManager.setStatus(
+        `Falha crítica: ${error.message || 'Erro desconhecido'}`,
+        'error',
+        // 5000,
+      );
+      throw error;
+    } finally {
+      this.cleanupAfterProcessing(total, errors.length);
+    }
+}
+
+  async processBatchItems(batch, processFn, results, errors) {
+    return Promise.all(
+      batch.map(item => this.processItemWithCache(item, processFn, results, errors))
+    );
+  }
+
+  async processItemWithCache(item, processFn, results, errors) {
+    try {
+      const result = await processFn(item);
+      const successResult = { item, success: true, result };
+      results.push(successResult);
+      
+      if (item?.id) {
+        const cachedData = this.manifestCache.get(item.id) || {};
+        this.manifestCache.set(item.id, { ...cachedData, ...item });
+      }
+
+      return successResult;
+    } catch (error) {
+      const errorResult = this.createErrorResult(item, error);
+      errors.push(errorResult);
+      return errorResult;
+    }
+  }
+
+  createErrorResult(item, error) {
+    const errorDetails = error.response || {};
+    const errorMessages = this.apiService.extractErrorMessages(errorDetails);
+    const errorMessage = errorMessages[0] || error.message || 'Erro desconhecido';
+    
+    return { 
+      item, 
+      success: false,
+      error: {
+        message: errorMessage,
+        details: {
+          status: error.status,
+          url: error.url,
+          response: errorDetails
+        }
+      }
+    };
+  }
+
+  async showBatchProgress(processed, total, errors, batchResults, actionName) {
+    const errorItems = batchResults.filter(r => !r.success);
+    const progressPercentage = Math.round((processed / total) * 100);
+    const successItems = batchResults.filter(r => r.success);
+
+    let statusMessage = `📊 ${actionName}: ${progressPercentage}% (${processed}/${total})`;
+    let statusType = 'warning';
+    let duration = this.config.UI.DELAY_MS_INFO;
+
+    if (successItems.length > 0) {
+      statusType = 'loading';
+      const successCodes = await this.getSequenceCodes(successItems);    
+      statusMessage += ` | 📋 ${successItems.length} sucesso(s): ${successCodes.join(', ')}`;
+    } 
+
+    if (errorItems.length > 0) {
+      statusType = 'loading';
+      const errorCodes = await this.getSequenceCodes(errorItems);
+      statusMessage += ` | ⚠️ ${errorItems.length} erro(s): ${errorCodes.join(', ')}`;
+    }
+    
+      await Utils.sleep(this.config.UI.DELAY_MS_ERROR)
+    this.messageManager.push(statusMessage, statusType, {duration: duration});
+  }
+
+  async finalizeProcessing(results, errors, total, actionName) {
+    const successCount = results.filter(r => r.success).length;
+    const errorCount = errors.length;
+    const [successCodes, errorCodes] = await Promise.all([
+      this.getSequenceCodes(results.filter(r => r.success)),
+      this.getSequenceCodes(errors)
+    ]);
+    
+    this.showFinalStatus(actionName, successCount, errorCount, successCodes, errorCodes);
+    await this.logProcessingDetails(results, errors, actionName);
+
+    return {
+      results,
+      errors,
+      stats: {
+        total,
+        successCount,
+        errorCount,
+        successRate: Math.round((successCount / total) * 100) + '%',
+        successCodes,
+        errorCodes
+      }
+    };
+  }
+
+  async showFinalStatus(actionName, successCount, errorCount, successCodes, errorCodes) {
+    const hasSuccess = successCount > 0;
+    const hasErrors = errorCount > 0;
+    
+    let finalMessage = '';
+    let finalType = 'info';
+    let duration = CONFIG.UI.DELAY_MS_ERROR;
+
+    // Cabeçalho resumido
+    if (hasSuccess && !hasErrors) {
+      finalMessage = `${actionName} concluído com sucesso! ${successCount} itens processados`;
+      finalType = 'success';
+    } else if (hasSuccess && hasErrors) {
+      finalMessage = `🟡 ${actionName} concluído parcialmente ${successCount} sucessos | ${errorCount} erros`;
+      finalType = 'warning';
+    } else if (!hasSuccess && hasErrors) {
+      finalMessage = `Falha no ${actionName}\n${errorCount} erros encontrados`;
+      finalType = 'error';
+      duration = 5000; // Erros ficam mais tempo visíveis
+    }
+
+    // Detalhes completos de sucesso
+    if (hasSuccess) {
+      finalMessage += ` 🟢 Sucessos (${successCount}): ${successCodes.join(', ')}`;
+    }
+
+    // Detalhes completos de erros
+    if (hasErrors) {
+      finalMessage += ` 🔴 Erros (${errorCount}): ${errorCodes.join(', ')}`;
+    }
+
+        await Utils.sleep(this.config.UI.DELAY_MS)
+      this.messageManager.push(finalMessage, finalType, {duration: duration});
+  }
+
+async logProcessingDetails(results, errors, actionName) {
+    console.groupCollapsed(`%c📦 Resultados completos do ${actionName}`, 'font-weight:bold;color:#4a6baf;font-size:1.1em');
+    
+    // Resumo estatístico com tratamento para divisão por zero
+    const total = results.length + errors.length;
+    const successCount = results.filter(r => r.success).length;
+    const errorCount = errors.length;
+    
+    // Calcula taxa de sucesso com tratamento para total = 0
+    const successRate = total > 0 
+        ? `${Math.round((successCount / total) * 100)}%`
+        : '0%'; // Ou 'N/A' se preferir
+
+    console.log(`%c📊 ESTATÍSTICAS GERAIS`, 'font-weight:bold;font-size:1.1em');
+    console.table({
+        'Total de itens': total,
+        'Sucessos': successCount,
+        'Erros': errorCount,
+        'Taxa de sucesso': successRate // Usando o valor tratado
+    });
+
+    // Lista completa de sucessos
+    if (successCount > 0) {
+      console.group(`%c✅ TODOS OS ${successCount} SUCESSOS`, 'color:green;font-weight:bold');
+      const successTable = await Promise.all(
+        results.filter(r => r.success).map(async (result) => {
+          const sequenceCode = await this.getSequenceCode(result.item?.id || result.item);
+          return {
+            'Manifesto': sequenceCode,
+            'Detalhes': result.details || 'Concluído com sucesso',
+            'Data': new Date().toLocaleString()
+          };
+        })
+      );
+      console.table(successTable);
+      console.groupEnd();
+    }
+
+    // Lista completa de erros
+    if (errorCount > 0) {
+      console.group(`%c❌ TODOS OS ${errorCount} ERROS`, 'color:red;font-weight:bold');
+      
+      const errorTable = await Promise.all(
+        errors.map(async (error) => {
+          const sequenceCode = await this.getSequenceCode(error.item?.id || error.item);
+          return {
+            'Manifesto': sequenceCode,
+            'Mensagem': error.error.message,
+           // 'Código': error.error.details?.status || 'N/A',
+           // 'URL': error.error.details?.url || 'N/A'
+          };
+        })
+      );
+      
+      console.table(errorTable);
+      
+      // Detalhes completos de cada erro
+      console.groupCollapsed('%c🔍 DETALHES COMPLETOS DOS ERROS', 'color:orange;font-weight:bold');
+      await Promise.all(errors.map(async (error, index) => {
+        const sequenceCode = await this.getSequenceCode(error.item?.id || error.item);
+        console.group(`%cErro ${index + 1} - Manifesto: ${sequenceCode}`, 'color:orange');
+        console.log('%cMensagem:', 'font-weight:bold', error.error.message);
+       // console.log('%cDetalhes:', 'font-weight:bold', error.error.details);
+       // console.log('%cItem:', 'font-weight:bold', error.item);
+        console.groupEnd();
+      }));
+      console.groupEnd();
+      
+      console.groupEnd();
+    }
+    
+    console.groupEnd();
+  }
+
+  async getSequenceCodes(items) {
+    // Removido o slice(0,10) para pegar todos os itens
+    const codes = await Promise.all(
+      items.map(async (item) => {
+        const manifestId = item.item?.id || item.item;
+        return manifestId ? await this.getSequenceCode(manifestId) : 'N/A';
+      })
+    );
+    return codes.filter(code => code !== 'N/A');
+  }
+
+  async getSequenceCode(manifestId) {
+    if (!manifestId) return 'N/A';
+    
+    if (this.manifestCache.has(manifestId)) {
+      const cached = this.manifestCache.get(manifestId);
+      return cached.sequence_code || cached.manifest?.sequence_code || 'N/A';
+    }
+    
+    try {
+      const manifestDetails = await this.apiService.getManifestDetails(manifestId);
+      const sequenceCode = manifestDetails.manifest?.sequence_code || 
+                         manifestDetails.sequence_code || 
+                         manifestDetails.data?.sequence_code || 
+                         'N/A';
+      
+      this.manifestCache.set(manifestId, manifestDetails);
+      return sequenceCode;
+    } catch (error) {
+      console.error('Erro ao buscar sequence_code:', error);
+      return 'N/A (erro)';
+    }
+  }
+
+  cleanupAfterProcessing(total, errorCount) {
+    this.state.operationInProgress = false;
+    
+    if (total - errorCount > 0) {
+      const activeTab = this.state.activeTab;
+      this.uiManager.clearAllLists();
+      this.fetchData().then(() => this.switchTab(activeTab));
+    }
+  }
+
+  calculateDynamicDelay(batchSize) {
+    return 1500 + (batchSize * 100);
+  }
+
+buildSearchParams() {
+  const startDate = document.getElementById('start-date')?.value || 
+                   Utils.getTodayBRDate(this.config.UI.DEFAULT_DATE_OFFSET_DAYS);
+  const endDate = document.getElementById('end-date')?.value || 
+                  Utils.getTodayBRDate();
+  
+  // Obtém os IDs corretos da filial atual da configuração
+  const system = this.config.getCurrentSystem();
+  const corporationId = system.API.MANIFESTS.CORPORATION_ID;
+  
+  return {
+    'search[manifests][service_date]': `${startDate} - ${endDate}`,
+    'search[manifests][corporation_id][]': corporationId, // Usa o ID da filial atual
+    'search[status]': 'pending,in_transit',
+    format: 'json',
+    page: '1',
+    per: '100',
+    order_by: 'sequence_code+desc'
+  };
+}
+
+setDefaultDates() {
+  if (!this.uiManager.elements.startDate || !this.uiManager.elements.endDate) return;
+
+  // Usa a função Utils
+  this.uiManager.elements.startDate.value = Utils.getTodayBRDate(this.config.UI.DEFAULT_DATE_OFFSET_DAYS);
+  this.uiManager.elements.endDate.value = Utils.getTodayBRDate();
+  }
+
+/**
+ * Alterna entre as abas MDF-e e CIOT
+ * @param {string} tab - Aba a ser ativada ('mdfe' ou 'ciot')
+ */
+switchTab(tab) {
+  if (this.state.activeTab === tab && this.state.initialized) return;
+  
+  this.state.activeTab = tab;
+  
+  // Esconde todos os painéis
+  if (this.uiManager.elements.mdfePanel) this.uiManager.elements.mdfePanel.style.display = 'none';
+  if (this.uiManager.elements.ciotPanel) this.uiManager.elements.ciotPanel.style.display = 'none';
+  if (this.uiManager.elements.statusPanel) this.uiManager.elements.statusPanel.style.display = 'none';
+  
+  // Mostra o painel ativo
+  const activePanel = this.uiManager.elements[`${tab}Panel`];
+  if (activePanel) activePanel.style.display = '';
+  
+  // Atualiza estilos das abas
+  const tabs = ['mdfe', 'ciot', 'status'];
+  tabs.forEach(t => {
+    const tabElement = this.uiManager.elements[`tab${t.charAt(0).toUpperCase() + t.slice(1)}`];
+    if (tabElement) {
+      if (t === tab) {
+        tabElement.style.backgroundColor = '#f8f9fa';
+        tabElement.style.color = '#1a3a6d';
+        tabElement.style.fontWeight = '600';
+        tabElement.style.borderBottom = '3px solid #1a3a6d';
+      } else {
+        tabElement.style.backgroundColor = '#e9ecef';
+        tabElement.style.color = '#6c757d';
+        tabElement.style.fontWeight = '500';
+        tabElement.style.borderBottom = 'none';
+      }
+    }
+  });
+
+  // Renderiza as listas imediatamente
+  this.uiManager.renderUnifiedLists(this.state.data, this.state.activeTab);
+  this.uiManager.updateCounters(this.state.data);
+}
+
+  setupAutoRefresh() {
+    this.state.refreshIntervalId = setInterval(() => {
+      this.fetchData();
+    }, this.config.UI.REFRESH_INTERVAL);
+  }
+
+setupEventListeners() {
+  // Função auxiliar para adicionar listeners com segurança
+  const addListener = (element, event, handler) => {
+    if (element && typeof handler === 'function') {
+      element.addEventListener(event, handler);
+      return true;
+    }
+    return false;
+  };
+
+  // 1. Controles do painel (usando seleção direta por ID como fallback)
+  const minimizeBtn = this.uiManager.elements.minimizeButton || document.getElementById('minimize-button');
+  const maximizeBtn = this.uiManager.elements.maximizeButton || document.getElementById('maximize-button');
+  const closeBtn = this.uiManager.elements.closeButton || document.getElementById('close-button');
+
+  addListener(minimizeBtn, 'click', () => this.toggleMinimize());
+  addListener(maximizeBtn, 'click', () => this.toggleMaximize());
+  addListener(closeBtn, 'click', () => this.closePanel());
+
+  // 2. Controle de abas
+  const tabStatus = this.uiManager.elements.tabStatus || document.getElementById('tab-status');
+  const tabMdfe = this.uiManager.elements.tabMdfe || document.getElementById('tab-mdfe');
+  const tabCiot = this.uiManager.elements.tabCiot || document.getElementById('tab-ciot');
+
+  addListener(tabStatus, 'click', (e) => {
+    e.stopPropagation();
+    this.switchTab('status');
+  });
+
+  addListener(tabMdfe, 'click', (e) => {
+    e.stopPropagation();
+    this.switchTab('mdfe');
+  });
+  
+  addListener(tabCiot, 'click', (e) => {
+    e.stopPropagation();
+    this.switchTab('ciot');
+  });
+
+  // 3. Filtros e carregamento
+  const loadBtn = this.uiManager.elements.loadDataBtn || document.getElementById('load-data');
+  // const startDate = this.uiManager.elements.startDate || document.getElementById('start-date');
+  // const endDate = this.uiManager.elements.endDate || document.getElementById('end-date');
+  
+  addListener(loadBtn, 'click', () => this.fetchData());
+  // addListener(startDate, 'change', () => this.fetchData());
+  // addListener(endDate, 'change', () => this.fetchData());
+
+// 4. Seção MDF-e - Sem MDF-e
+addListener(this.uiManager.elements.selAllNo, 'click', () => this.handleSelectAll('no'));
+addListener(this.uiManager.elements.doGenerate, 'click', async () => {
+  const selected = this.getSelectedItems('sel-no');
+  if (selected.length > 0) {
+    await this.processBatch(
+      selected, 
+      this.doGenerate.bind(this),
+      'Geração de MDF-e'
+    );
+  }
+});
+
+// 5. Seção MDF-e - Pendentes
+addListener(this.uiManager.elements.selAllPend, 'click', () => this.handleSelectAll('pend'));
+addListener(this.uiManager.elements.doCancelPend, 'click', async () => {
+  const selected = this.getSelectedItems('sel-pend');
+  if (selected.length > 0) {
+    await this.processBatch(
+      selected, 
+      this.doNotGenerate.bind(this),
+      'Cancelamento de MDF-e pendente'
+    );
+  }
+});
+addListener(this.uiManager.elements.doIssue, 'click', async () => {
+  const selected = this.getSelectedItems('sel-pend');
+  if (selected.length > 0) {
+    await this.processBatch(
+      selected, 
+      this.doIssue.bind(this),
+      'Emissão de MDF-e'
+    );
+  }
+});
+
+// 6. Seção MDF-e - Emitidos
+addListener(this.uiManager.elements.selAllOpen, 'click', () => this.handleSelectAll('open'));
+addListener(this.uiManager.elements.doCancelOpen, 'click', async () => {
+  const selected = this.getSelectedItems('sel-open');
+  if (selected.length > 0) {
+    await this.processBatch(
+      selected, 
+      this.doCancel.bind(this),
+      'Cancelamento de MDF-e emitido'
+    );
+  }
+});
+addListener(this.uiManager.elements.doClose, 'click', async () => {
+  const selected = this.getSelectedItems('sel-open');
+  if (selected.length > 0) {
+    await this.processBatch(
+      selected, 
+      this.doClose.bind(this),
+      'Encerramento de MDF-e'
+    );
+  }
+});
+
+// 7. Seção CIOT - Sem CIOT
+addListener(this.uiManager.elements.ciotSelAllNo, 'click', () => this.handleSelectAll('ciot-no'));
+addListener(this.uiManager.elements.doSaveCiot, 'click', async () => {
+  const selected = Array.from(document.getElementById('ciot-list-no').selectedOptions)
+    .map(o => o.value);
+  
+  await this.processBatch(
+    selected, 
+    async (id) => {
+      const manifest = this.state.data.CiotSystem.manifests.noCiot.find(m => 
+        m.id == id || m.doc_e_id == id
+      );
+      if (manifest) {
+        await this.incluirCIOTPendente(manifest.doc_e_id || manifest.id);
+      }
+    },
+    'Inclusão de CIOT pendente'
+  );
+});
+
+// 8. Seção CIOT - Pendentes
+addListener(this.uiManager.elements.ciotSelAllPendente, 'click', () => this.handleSelectAll('ciot-pend'));
+addListener(this.uiManager.elements.doCancelCiot, 'click', async () => {
+  const selected = this.getSelectedItems('ciot-list-pendente');
+  if (selected.length > 0) {
+    await this.processBatch(
+      selected, 
+      this.cancelarCIOT.bind(this),
+      'Cancelamento de CIOT pendente'
+    );
+  }
+});
+addListener(this.uiManager.elements.doIntegrarCiot, 'click', async () => {
+  const selected = this.getSelectedCiotItems('ciot-list-pendente');
+  await this.processBatch(
+    selected.filter(item => item.ciotId).map(item => item.ciotId),
+    this.integrarCIOT.bind(this),
+    'Integração de CIOT'
+  );
+});
+
+// 9. Seção CIOT - Enviados
+addListener(this.uiManager.elements.ciotSelAllOpen, 'click', () => this.handleSelectAll('ciot-open'));
+addListener(this.uiManager.elements.doCancelCiotEnviado, 'click', async () => {
+  const selected = this.getSelectedItems('ciot-list-open');
+  if (selected.length > 0) {
+    await this.processBatch(
+      selected, 
+      this.cancelarCIOT.bind(this),
+      'Cancelamento de CIOT enviado'
+    );
+  }
+});
+
+// Listeners para a aba Status
+document.getElementById('tab-status')?.addEventListener('click', () => {
+  this.state.activeTab = 'status';
+  this.uiManager.renderUnifiedLists(this.state.data, 'status');
+});
+
+// Pendentes -> Iniciar Transporte
+addListener(this.uiManager.elements.selAllPending, 'click', () => this.handleSelectAll('pending'));
+addListener(this.uiManager.elements.doStartTransport, 'click', async () => {
+  const selected = this.getSelectedItems('sel-pending');
+  await this.processBatch(
+    selected,
+    id => this.StatusManager.startTransport(id),
+    'Início de transporte'
+  );
+});
+
+// Em Trânsito -> Retornar para Pendente
+addListener(this.uiManager.elements.selAllInTransit, 'click', () => this.handleSelectAll('in-transit'));
+addListener(this.uiManager.elements.doUnlock, 'click', async () => {
+  const selected = this.getSelectedItems('sel-in-transit');
+  await this.processBatch(
+    selected,
+    id => this.StatusManager.unlockToPending(id),
+    'Retorno para pendente'
+  );
+});
+
+// Em Trânsito -> Finalizar Manifesto
+addListener(this.uiManager.elements.doFinish, 'click', async () => {
+  const selected = this.getSelectedItems('sel-in-transit');
+  await this.processBatch(
+    selected,
+    id => this.StatusManager.closeManifest(id),
+    'Finalização de manifesto'
+  );
+});
+
+// Finalizados -> Estornar para Em Trânsito
+addListener(this.uiManager.elements.selAllClosed, 'click', () => this.handleSelectAll('closed'));
+addListener(this.uiManager.elements.doReverse, 'click', async () => {
+  const selected = this.getSelectedItems('sel-closed');
+  await this.processBatch(
+    selected,
+    id => this.StatusManager.reverseToInTransit(id),
+    'Reabertura de manifesto'
+  );
+});
+
+  // 10. Configuração do arrastar do painel
+  this.setupDragBehavior();
+  }
+
+// Adicione esses métodos auxiliares ao PanelManager:
+getSelectedItems(listId) {
+  const list = document.getElementById(listId);
+  return list ? Array.from(list.selectedOptions).map(o => o.value) : [];
+}
+
+getSelectedCiotItems(listId) {
+  const list = document.getElementById(listId);
+  if (!list) return [];
+
+  return Array.from(list.selectedOptions).map(option => {
+    const manifest = this.state.data.CiotSystem.manifests[listId === 'ciot-list-no' ? 'noCiot' : 
+                     listId === 'ciot-list-pendente' ? 'pendentes' : 'open']
+                     .find(m => (m.manifest?.id || m.id) == option.value || 
+                                (m.ciot?.id == option.value));
+
+    return {
+      manifestId: manifest?.manifest?.id || manifest?.id,
+      ciotId: manifest?.ciot?.id || (manifest?.id === option.value ? null : option.value),
+      manifestData: manifest
+    };
+  });
+}
+
+  setupDragBehavior() {
+    const header = this.uiManager.elements.panelHeader;
+    if (!header) return;
+
+    let isDragging = false;
+    let offsetX, offsetY;
+    const panel = this.uiManager.elements.panel;
+
+    header.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      offsetX = e.clientX - panel.getBoundingClientRect().left;
+      offsetY = e.clientY - panel.getBoundingClientRect().top;
+      header.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      header.style.cursor = 'grab';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging || !panel) return;
+      panel.style.left = `${e.clientX - offsetX}px`;
+      panel.style.top = `${e.clientY - offsetY}px`;
+      panel.style.right = 'unset';
+      e.preventDefault();
+    });
+  }
+
+async buildQueryParams() {
+  const params = {};
+  
+  // Obter datas dos inputs ou usar padrão
+  const startDateInput = this.uiManager.elements.startDate?.value;
+  const endDateInput = this.uiManager.elements.endDate?.value;
+  
+  // Usa as datas diretamente sem conversão
+  params['search[manifests][service_date]'] = startDateInput && endDateInput
+    ? `${startDateInput} - ${endDateInput}`
+    : `${Utils.getTodayBRDate(this.config.UI.DEFAULT_DATE_OFFSET_DAYS)} - ${Utils.getTodayBRDate()}`;
+
+  params.timestamp = Date.now();
+  
+  return params;
+}
+
+waitForElements(ids) {
+  return new Promise((resolve) => {
+    const check = () => {
+      const allExist = ids.every(id => document.getElementById(id));
+      if (allExist) {
+        resolve();
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
+  });
+}
+
+showFeedback(count, params) {
+  const dateRange = params['search[manifests][service_date]'].split(' - ');
+  const displayedStart = Utils.formatDate(dateRange[0]);
+  const displayedEnd = Utils.formatDate(dateRange[1]);
+
+  const system = CONFIG.getCurrentSystem();
+  
+  this.messageManager.push(
+    `Painel ${system.NAME}: ${count} manifestos entre ${displayedStart} e ${displayedEnd}`, 
+    'success'
+  );
+}
+
+handleSelectAll(listType) {
+  const listMap = {
+    'no': 'sel-no',
+    'pend': 'sel-pend',
+    'open': 'sel-open',
+    'ciot-no': 'ciot-list-no',
+    'ciot-pend': 'ciot-list-pendente',
+    'ciot-open': 'ciot-list-open',
+    'pending': 'sel-pending',
+    'in-transit': 'sel-in-transit',
+    'closed': 'sel-closed'
+  };
+
+  const listId = listMap[listType];
+  if (!listId) return;
+
+  const list = document.getElementById(listId);
+  if (!list) return;
+
+  const allSelected = Array.from(list.options).every(o => o.selected);
+  
+  // Seleciona/deseleciona todos
+  Array.from(list.options).forEach(option => {
+    option.selected = !allSelected;
+  });
+}
+
+toggleMinimize() {
+  const panel = document.getElementById('control-panel');
+  if (!panel) return;
+  
+  // Se estiver maximizado, primeiro restaura o tamanho normal
+  if (this.state.maximized) {
+    this.toggleMaximize();
+  }
+
+  this.state.minimized = !this.state.minimized;
+  
+  if (this.state.minimized) {
+    panel.style.height = '40px';
+    panel.style.overflow = 'hidden';
+    panel.querySelector('.panel-content').style.display = 'none';
+  } else {
+    panel.style.height = this.state.originalSize.height;
+    panel.querySelector('.panel-content').style.display = '';
+  }
+}
+
+toggleMaximize() {
+  const panel = document.getElementById('control-panel');
+  if (!panel) return;
+  
+  if (this.state.minimized) {
+    this.toggleMinimize();
+  }
+
+  this.state.maximized = !this.state.maximized;
+  
+  if (this.state.maximized) {
+    this.state.originalSize = {
+      width: panel.style.width,
+      height: panel.style.height
+    };
+    panel.style.width = '95vw';
+    panel.style.height = '95vh';
+    panel.style.top = '10px';
+    panel.style.left = '10px';
+    panel.style.right = 'auto';
+  } else {
+    panel.style.width = this.state.originalSize.width;
+    panel.style.height = this.state.originalSize.height;
+    panel.style.top = this.state.originalPosition.top;
+    panel.style.right = this.state.originalPosition.right;
+    panel.style.left = 'auto';
+  }
+}
+
+closePanel() {
+  const panel = document.getElementById('control-panel');
+  if (panel) {
+    panel.remove();
+    clearInterval(this.state.refreshIntervalId);
+    this.state.initialized = false;
+  }
+}
+
+/**
+ * Adiciona listener com segurança
+ * @param {string} elementId - ID do elemento
+ * @param {string} event - Tipo de evento
+ * @param {Function} handler - Função de callback
+ */
+addListener(elementId, event, handler) {
+  const element = document.getElementById(elementId);
+  if (element && typeof handler === 'function') {
+    element.addEventListener(event, handler);
+    return true;
+  }
+  return false;
+}
+// =============================================
+// Métodos MDF-e
+// =============================================
+/**
+ * Gera MDF-e para manifestos selecionados
+ */
+async doGenerate(manifestId) {
+  // Pega o sequence_code do cache já existente
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Gerando MDF-e pendente...`, 'loading');
+
+  const apiUrls = this.config.getApiUrls();
+  
+  // Busca no state (já contém sequence_code)
+  const manifest = this.state.data.MDFeSystem.manifests.noMdfe.find(m => m.id == manifestId);
+  
+  if (!manifest) {
+    throw new Error(`Manifesto ${sequenceCode} não encontrado`);
+  }
+
+  const formData = new URLSearchParams();
+  
+  // Preenche os dados do manifesto (que já tem sequence_code)
+  for (const [key, value] of Object.entries(manifest)) {
+    if (value != null) formData.append(`manifest[${key}]`, value);
+  }
+     
+    // Flags específicas para MDF-e
+    formData.append('manifest[generate_mdfe]', 'true');
+    formData.append('manifest[mdfe_status]', 'pending');
+    formData.append('manifest[loading_state_id]', apiUrls.MDFE.DEFAULT_STATE_ID);
+    formData.append('manifest[unloading_state_id]', apiUrls.MDFE.DEFAULT_STATE_ID);
+
+    await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}`,
+      formData,
+      'PUT'
+    );
+
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: MDF-e gerado!`, 'success');
+  await this.fetchData(); // Atualiza os dados mantendo o cache
+}
+
+/**
+ * Cancela geração de MDF-e
+ */
+async doNotGenerate(manifestId) {
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelando MDF-e...`, 'loading');
+
+  const manifest = this.state.data.MDFeSystem.manifests.pendentes.find(m => m.id == manifestId);
+  
+  if (!manifest) {
+    throw new Error(`Manifesto ${sequenceCode} não está pendente`);
+  }
+
+  const formData = new URLSearchParams();
+  
+  // Usa os dados do cache/state
+  for (const [key, value] of Object.entries(manifest)) {
+    if (value != null) formData.append(`manifest[${key}]`, value);
+  }
+  
+  formData.append('manifest[generate_mdfe]', 'false');
+  formData.append('manifest[mdfe_status]', '');
+
+  await this.apiService.postForm(
+    `${this.config.getApiUrls().MANIFESTS.BASE_URL}/${manifestId}`,
+    formData,
+    'PUT'
+  );
+  
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelamento realizado!`, 'success');
+  await this.fetchData();
+}
+
+/**
+ * Emite MDF-e
+ */
+async doIssue(docId) {
+  // Obtém o manifestId correspondente ao docId ou usa o docId como fallback
+  const manifestId = this.getManifestIdFromDocId(docId) || docId;
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Emitindo MDF-e...`, 'loading');
+
+  const apiUrls = this.config.getApiUrls();
+  const groups = await this.apiService.getMdfeGroups(docId);
+  
+  if (!groups?.length) {
+    throw new Error(`Nenhum grupo encontrado para documento ${docId}`);
+  }
+
+  await this.apiService.postForm(
+    `${apiUrls.MDFE.GROUPS_URL}/${groups[0].id}/issue`,
+    new URLSearchParams()
+  );
+  
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Emissão concluída!`, 'success');
+  await this.fetchData();
+}
+
+async doClose(docId) {
+  // Obtém o manifestId correspondente ao docId ou usa o docId como fallback
+  const manifestId = this.getManifestIdFromDocId(docId) || docId;
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Encerrando MDF-e...`, 'loading');
+
+  const apiUrls = this.config.getApiUrls();
+  const groups = await this.apiService.getMdfeGroups(docId);
+  
+  if (!groups?.length) {
+    throw new Error(`Nenhum grupo para documento ${docId}`);
+  }
+
+  const mdfeId = groups[0].mdfe_id;
+  if (!mdfeId) {
+    throw new Error(`ID do MDF-e não encontrado para ${docId}`);
+  }
+
+  const mdfeDetails = await this.apiService.fetchJSON(
+    `${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}`
+  );
+  
+  const closingCityId = mdfeDetails.closing_city?.id;
+  if (!closingCityId) {
+    throw new Error(`Cidade de encerramento não definida para ${docId}`);
+  }
+
+  const formData = new URLSearchParams();
+  formData.append('closing_city_id', closingCityId);
+  
+  await this.apiService.postForm(
+    `${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}/close`,
+    formData
+  );
+  
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Encerrado com sucesso!`, 'success');
+  await this.fetchData();
+}
+
+async doCancel(docId) {
+  // Obtém o manifestId correspondente ao docId ou usa o docId como fallback
+  const manifestId = this.getManifestIdFromDocId(docId) || docId;
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelando MDF-e...`, 'loading');
+
+  const apiUrls = this.config.getApiUrls();
+  const formData = new URLSearchParams();
+  const groups = await this.apiService.getMdfeGroups(docId);
+  
+  if (!groups?.length) {
+    throw new Error(`Nenhum grupo para documento ${docId}`);
+  }
+
+  const mdfeId = groups[0].mdfe_id;
+  if (!mdfeId) {
+    throw new Error(`ID do MDF-e não encontrado para ${docId}`);
+  }
+
+  formData.append('reason', 'Cancelamento solicitado pelo usuário');
+  
+  await this.apiService.postForm(
+    `${apiUrls.MDFE.DOCS_URL}/documents/${mdfeId}/cancel`,
+    formData
+  );
+  
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Cancelamento realizado!`, 'success');
+  await this.fetchData();
+}
+
+// =============================================
+// Métodos auxiliares para MDF-e
+// =============================================
+
+/**
+ * Obtém grupos MDF-e para um manifesto
+ * @param {string} manifestId - ID do manifesto
+ * @returns {Promise<Array>} Lista de grupos MDF-e
+ */
+async getMdfeGroups(manifestId) {
+  try {
+    const response = await this.apiService.fetchJSON(
+      `${this.config.getApiUrls().MANIFESTS.BASE_URL}/${manifestId}/mdfe_groups`
+    );
+    
+    if (!response) {
+      throw new Error('Resposta vazia da API');
+    }
+    
+    return response;
+    
+  } catch (error) {
+    console.error('Erro ao obter grupos MDF-e:', {
+      manifestId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+    
+    throw new Error(`Não foi possível obter grupos MDF-e: ${error.message}`);
+  }
+}
+
+getManifestIdFromDocId(docId) {
+  // Verifica se há um mapeamento direto no cache
+  if (this.manifestCache[docId]) {
+    return docId; // Se docId já é uma chave no cache
+  }
+
+  // Caso contrário, procura em todas as entradas do cache
+  for (const [manifestId, data] of Object.entries(this.manifestCache)) {
+    if (data.docId === docId || data.id === docId) { // Ajuste conforme sua estrutura
+      return manifestId;
+    }
+  }
+
+  return null; // Retorna null se não encontrar
+}
+
+// =============================================
+// Métodos específicos para CIOT
+// =============================================
+/**
+ * Inclui um CIOT pendente para o manifesto selecionado
+ * @param {string} manifestId - ID do manifesto
+ * @returns {Promise<void>}
+ */
+async incluirCIOTPendente(manifestId) {
+
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Incluindo CIOT pendente...`, 'loading');
+
+    // Busca o manifesto correto com mais tolerância
+    const manifest = this.state.data.CiotSystem.manifests.noCiot.find(m => 
+      m.id == manifestId || m.doc_e_id == manifestId || m.id?.toString() === manifestId?.toString()
+    );
+    
+    if (!manifest) {
+      throw new Error(`Manifesto com ID ${manifestId} não encontrado na lista de manifestos sem CIOT`);
+    }
+
+    const effectiveManifestId = manifest.doc_e_id || manifest.id;
+    
+    // 1. Primeiro tentamos buscar um CIOT existente
+    let ciotData = {};
+    try {
+      ciotData = await this.apiService.getCiotForManifest(effectiveManifestId);
+    } catch (apiError) {
+      console.warn('Não foi possível buscar CIOT existente, criando novo:', apiError.message);
+    }
+
+    // Valida dados necessários com fallbacks robustos
+    const hiredId = ciotData.hired_id || manifest.main_driver_id || manifest.driver_id;
+    const driverId = ciotData.ciot_drivers?.[0]?.driver_id || manifest.driver_id || manifest.main_driver_id;
+    
+    // Verificação mais robusta do payment method
+    let paymentMethodId = '';
+    let paymentMethodName = '';
+    
+    if (ciotData.hired_payment_method) {
+      paymentMethodId = ciotData.hired_payment_method.id;
+      paymentMethodName = ciotData.hired_payment_method.name || '';
+    } else if (ciotData.ciot_drivers?.[0]?.payment_methods_attributes?.[0]) {
+      paymentMethodId = ciotData.ciot_drivers[0].payment_methods_attributes[0].id;
+      paymentMethodName = ciotData.ciot_drivers[0].payment_methods_attributes[0].name || '';
+    } else if (manifest.payment_method_id) {
+      paymentMethodId = manifest.payment_method_id;
+      paymentMethodName = manifest.payment_method_name || '';
+    }
+
+    // Prepara os dados do CIOT
+    const formData = new URLSearchParams();
+    const add = (k, v) => v !== undefined && v !== null && formData.set(`doc_e_ciot_standard[${k}]`, v);
+
+    // Dados básicos na ordem correta conforme API
+    add('id', ciotData.id || '');
+    add('type', 'DocE::Ciot::Standard');
+    add('esl_tenant_id', this.config.getApiUrls().CIOT.TENANT_ID);
+    add('sequence_code', '');
+    add('ciot_integration_id', this.config.getApiUrls().CIOT.INTEGRATION_ID);
+    add('corporation_id', this.config.getApiUrls().MANIFESTS.CORPORATION_ID);
+    add('hired_id', hiredId);
+    add('hired_payment_method_id', paymentMethodId);
+    add('hired_payment_method_description', paymentMethodName);
+    add('subcontractor_id', '');
+    add('subcontractor_payment_method_id', '');
+    add('status', 'pending');
+    add('number', '');
+    add('protocol', '');
+    add('departure_date', Utils.getTodayBRDate());
+    add('estimated_close_date', Utils.getTodayBRDate(90));
+    add('close_date', '');
+    add('integration_result', '');
+    add('withdrawal_fee', '0');
+    add('transfer_fee', '0');
+    add('axis', '0');
+    add('double_wheel', 'false');
+    add('processing', 'false');
+    add('pending_update', 'false');
+    add('integrated_toll', 'false');
+    add('integration_type', 'pamcard');
+    add('manifest_id', manifest.id);
+    add('status_formatted', 'Pendente');
+    add('balance', '0.0');
+    add('card_fee', '0.0');
+    add('integrate_billing', 'false');
+    add('batch_credits', '0.0');
+    add('batch_debits', '0.0');
+    add('additionals_value', '0.0');
+    add('discounts_value', '0.0');
+    add('freight_balance', '0.0');
+    add('toll_subtotal', '0.0');
+    add('toll_payment_by_tag', 'false');
+    add('toll_tag_issuer', '');
+    add('toll_round_trip', 'false');
+    add('loading_place_id', '');
+
+    // Dados do motorista
+    if (driverId) {
+      formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][driver_id]`, driverId);
+      if (paymentMethodId) {
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_method_id]`, paymentMethodId);
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][id]`, paymentMethodId);
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][name]`, paymentMethodName);
+        formData.set(`doc_e_ciot_standard[ciot_drivers_attributes][0][payment_methods_attributes][0][ciot_integration_id]`, 
+          this.config.getApiUrls().CIOT.INTEGRATION_ID);
+      }
+    }
+
+    // Dados do manifesto
+    formData.set(`doc_e_ciot_standard[ciot_manifests_attributes][0][manifest_id]`, manifest.id);
+    formData.set(`doc_e_ciot_standard[ciot_manifests_attributes][0][esl_tenant_id]`, this.config.getApiUrls().CIOT.TENANT_ID);
+    formData.set(`doc_e_ciot_standard[ciot_manifests_attributes][0][integrated]`, 'false');
+    
+    // Endpoint fixo para criação (POST)
+    const endpoint = `${this.config.getApiUrls().CIOT.BASE_URL}/standards`;
+    const method = 'POST'; // Definindo explicitamente o método como POST
+    
+    console.log('Enviando dados para:', endpoint, 'Método:', method, 'Dados:', Object.fromEntries(formData));
+    
+    const response = await this.apiService.postForm(endpoint, formData, method);
+    
+    if (!response.id) {
+      throw new Error('A API não retornou o ID do CIOT criado');
+    }
+    
+    this.uiManager.setStatus(`Manifesto ${sequenceCode}: CIOT pendente incluído com sucesso!`, 'success');
+    await this.fetchData(); // Atualiza os dados
+    
+    return response;
+}
+
+/**
+ * Integra um CIOT com a transportadora
+ * @param {string} ciotId - ID do CIOT
+ * @returns {Promise<object>} Resultado da integração
+ */
+async integrarCIOT(manifestId) {
+
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Iniciando integração CIOT...`, 'loading');
+
+    // 1. PRIMEIRA CHAMADA - Obter o CIOT_ID pelo manifest_id (usando endpoint específico)
+    const ciotResponse = await this.apiService.fetchJSON(
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/for_manifest?manifest_id=${manifestId}`
+    );
+
+    if (!ciotResponse?.id) {
+      throw new Error('Não foi possível obter o CIOT para este manifesto');
+    }
+
+    const ciotId = ciotResponse.id;
+
+    // 2. VALIDAR STATUS (usando sua função getCiotDetails)
+    const ciotDetails = await this.getCiotDetails(ciotId);
+    
+    if (ciotDetails.status !== 'pending') {
+      throw new Error(`CIOT não está no status "pendente" (status atual: ${ciotDetails.status})`);
+    }
+
+    // 3. SEGUNDA CHAMADA - Integrar o CIOT
+    const formData = new URLSearchParams();
+    formData.set('_method', 'POST');
+    
+    const result = await this.apiService.postForm(
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}/integrate`,
+      formData
+    );
+
+    // 4. VERIFICAR RESULTADO
+    if (result.status === 'sending') {
+      this.uiManager.setStatus(`Manifesto ${sequenceCode}: CIOT integrado com sucesso!`, 'success');
+      await this.fetchData(); // Atualizar dados
+      return result;
+    }
+
+    throw new Error(`Status inesperado na resposta: ${result.status}`);
+}
+
+/**
+ * Cancela um CIOT
+ * @param {string} ciotId - ID do CIOT
+ * @returns {Promise<object>} Resultado do cancelamento
+ */
+async cancelarCIOT(manifestId) {
+
+  const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+  this.uiManager.setStatus(`Manifesto ${sequenceCode}: Preparando cancelamento...`, 'loading');
+
+    // 1. Obter o CIOT ID através do manifestId
+    const ciotData = await this.apiService.getCiotForManifest(manifestId);
+    
+    if (!ciotData || !ciotData.id) {
+      throw new Error('Nenhum CIOT encontrado para este manifesto');
+    }
+    
+    const ciotId = ciotData.id; // Extrai o ID do CIOT da resposta
+
+    // 2. Preparar requisição de cancelamento
+    const formData = new URLSearchParams();
+    formData.set('_method', 'POST');
+    
+    // 3. Fazer a requisição de cancelamento
+    const endpoint = `${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}/cancel`;
+    
+    const result = await this.apiService.postForm(endpoint, formData);
+    
+    // 4. Verificar resultado
+    if (!result || result.error) {
+      throw new Error(result?.error || 'Falha no cancelamento');
+    }
+
+    this.uiManager.setStatus(`Manifesto ${sequenceCode}: CIOT cancelado com sucesso!`, 'success');
+    await this.fetchData();
+    
+    return result;
+}
+
+/**
+ * Obtém detalhes de um CIOT
+ * @param {string} ciotId - ID do CIOT
+ * @returns {Promise<object>} Dados do CIOT
+ */
+async getCiotDetails(ciotId) {
+
+    const response = await this.apiService.fetchJSON(
+      `${this.config.getApiUrls().CIOT.BASE_URL}/standards/${ciotId}`
+    );
+    
+    if (!response) {
+      throw new Error('Resposta vazia da API');
+    }
+    
+    return response;
+}
+
+/**
+ * Processa manifestos selecionados para CIOT
+ * @param {string} listType - Tipo de lista ('no', 'pend', 'open')
+ * @param {Function} processFn - Função de processamento
+ */
+async processSelectedCiot(listType, processFn) {
+  const listMap = {
+    'no': 'ciot-list-no',
+    'pend': 'ciot-list-pendente',
+    'open': 'ciot-list-open'
+  };
+
+  const listId = listMap[listType];
+  if (!listId) {
+    this.uiManager.setStatus('Tipo de lista CIOT inválido', 'error');
+    return;
+  }
+
+  const list = document.getElementById(listId);
+  if (!list) {
+    this.uiManager.setStatus('Elemento de lista não encontrado', 'error');
+    return;
+  }
+
+  const selected = Array.from(list.selectedOptions).map(o => o.value);
+  if (selected.length === 0) {
+    this.uiManager.setStatus('Nenhum CIOT selecionado', 'error');
+    return;
+  }
+
+  await this.processBatch(selected, processFn);
+  }
+
+  // Método auxiliar para obter sequence_code
+  async #getSequenceCodeWithFallback(manifestId) {
+    try {
+      const manifestDetails = await this.apiService.getManifestDetails(manifestId);
+      return manifestDetails.sequence_code || manifestId;
+    } catch {
+      return manifestId;
+    }
+  }
+}
+
+class ManifestStatusManager {
+  constructor(config, apiService, uiManager) {
+    this.config = config;
+    this.apiService = apiService;
+    this.uiManager = uiManager;
+    this.messageManager = new MessageQueueManager(uiManager);
+  }
+
+  // Método auxiliar para obter sequence_code
+  async #getSequenceCodeWithFallback(manifestId) {
+    try {
+      const manifestDetails = await this.apiService.getManifestDetails(manifestId);
+      return manifestDetails.sequence_code || manifestId;
+    } catch {
+      return manifestId;
+    }
+  }
+
+  /**
+   * Formata data/hora para a API
+   */
+  getFormattedDateTime() {
+    const now = new Date();
+    const date = now.toLocaleDateString('pt-BR').split('/').reverse().join('-');
+    const time = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+    return { date, time };
+  }
+
+  /**
+   * Inicia transporte (Pending → In_Transit)
+   */
+async startTransport(manifestId) {
+    if (!manifestId) throw new Error('ID do manifesto não fornecido');
+
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Iniciando transporte ${sequenceCode}...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const manifestDetails = await this.apiService.getManifestEditDetails(manifestId);
+
+    // Fallback para hoje às 8:00 se departured_at não existir
+    const departuredAt = manifestDetails.departured_at 
+      ? new Date(manifestDetails.departured_at) 
+      : this.#getTodayAt6AM();
+
+    const brTimeString = departuredAt.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour12: false
+    });
+
+    const [datePart, timePart] = brTimeString.split(', ');
+    const [day, month, year] = datePart.split('/');
+    const [hours, minutes] = timePart.split(':');
+    
+    const formattedISO = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:00.000-03:00`;
+
+    const formData = new URLSearchParams();
+    formData.append('departured_at', formattedISO);
+    formData.append('departured_at_date', `${year}-${month}-${day}`);
+    formData.append('departured_at_time', `${hours}:${minutes}`);
+
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/start_transport`,
+      formData
+    );
+
+    this.uiManager.setStatus(`Transporte ${sequenceCode} iniciado`, 'success');
+    return response;
+}
+
+// Método auxiliar para obter a data de hoje às 6:00 AM
+#getTodayAt6AM() {
+    const now = new Date();
+    // Define para hoje às 6:00 no fuso horário de São Paulo
+    return new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        6,  // horas
+        0,  // minutos
+        0,  // segundos
+        0   // milissegundos
+    );
+}
+
+async unlockToPending(manifestId) {
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Retornando ${sequenceCode} para "Pendente"...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/unlock`,
+      new URLSearchParams()
+    );
+
+    this.uiManager.setStatus(`${sequenceCode} retornado para "Pendente"`, 'success');
+    return response;
+}
+
+  /**
+   * Finaliza manifesto (In_Transit → Closed)
+   */
+async closeManifest(manifestId, manifestData = {}) {
+    if (!manifestId) throw new Error('ID do manifesto não fornecido');
+
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Finalizando manifesto ${sequenceCode}...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const manifestDetails = await this.apiService.getManifestEditDetails(manifestId);
+
+    // Obter data/hora atual formatada
+    const { date: currentDate, time: currentTime } = this.getFormattedDateTime();
+    const now = new Date();
+
+    // PRESERVAÇÃO DOS DADOS TEMPORAIS (igual ao updateManifestStatus)
+    // Usa closed_at existente ou data atual
+    const closedAt = manifestDetails.closed_at 
+                   ? new Date(manifestDetails.closed_at) 
+                   : now;
+    
+    // Preserva departured_at existente
+    const departuredAt = manifestDetails.departured_at
+                      ? new Date(manifestDetails.departured_at)
+                      : null;
+
+    // Configurar payload com dados padrão do sistema
+    const payload = {
+      utf8: '✓',
+      authenticity_token: await Utils.getCSRFToken(),
+      close_now: 'true',
+      manifest: {
+        id: manifestId,
+        status: 'closed',
+        checklist_confirmed: 'true',
+        closing_km: manifestData.closing_km || '0',
+        closing_comments: manifestData.closing_comments || '',
+        
+        // Campos temporais preservados
+        closed_at: closedAt.toISOString(),
+        closing_date: currentDate,
+        closing_time: currentTime,
+        ...(departuredAt && { departured_at: departuredAt.toISOString() }), // Só adiciona se existir
+        
+        // Restante dos campos originais...
+        esl_tenant_id: apiUrls.CIOT.TENANT_ID,
+        corporation_id: apiUrls.MANIFESTS.CORPORATION_ID,
+        calculation_origin_city_id: manifestDetails.calculation_origin_city_id || 
+                                   manifestDetails.calculation_origin_city?.id || 
+                                   '',
+        calculation_destination_city_id: manifestDetails.calculation_destination_city_id || 
+                                       manifestDetails.calculation_destination_city?.id || 
+                                       '',
+        loading_state_id: manifestDetails.loading_state_id || '12',
+        unloading_state_id: manifestDetails.unloading_state_id || '12',
+        vehicle_id: manifestDetails.vehicle_id || '',
+        main_driver_id: manifestDetails.main_driver_id || '',
+        vehicle_plate: manifestDetails.vehicle?.license_plate || '',
+        drivers_names: manifestDetails.drivers_names || [],
+        calculation_type: manifestDetails.calculation_type || 'price_table',
+        cargo_type: manifestDetails.cargo_type || 'closed',
+        contract_type: manifestDetails.contract_type || 'aggregate',
+        mdfe_operation_type: manifestDetails.mdfe_operation_type || 'transport_service',
+        manifest_type: manifestDetails.manifest_type || 'fractionated_cargo',
+        freight_subtotal: manifestDetails.freight_subtotal || '0',
+        total_cost: manifestDetails.total_cost || '0',
+        paying_total: manifestDetails.paying_total || '0',
+        status_operational_checklist: 'pending',
+        itinerary_status: 'pending',
+        advance_cost_released: manifestDetails.advance_cost_released ? 'true' : 'false',
+        aggregate_cost_released: manifestDetails.aggregate_cost_released ? 'true' : 'false',
+        vehicle_utilization_released: manifestDetails.vehicle_utilization_released ? 'true' : 'false',
+        ciot_id: manifestDetails.ciot_id || '',
+        ciot_status: manifestDetails.ciot_status || '',
+        manifest_ciot_closing_batch_id: manifestDetails.manifest_ciot_closing_batch_id || ''
+      }
+    };
+
+    // Converter para FormData
+    const formData = new URLSearchParams();
+    for (const [key, value] of Object.entries(payload)) {
+      if (typeof value === 'object') {
+        for (const [subKey, subValue] of Object.entries(value)) {
+          if (Array.isArray(subValue)) {
+            subValue.forEach((item, index) => {
+              formData.append(`manifest[${subKey}][${index}]`, item);
+            });
+          } else {
+            formData.append(`manifest[${subKey}]`, subValue);
+          }
+        }
+      } else {
+        formData.append(key, value);
+      }
+    }
+
+    // Adicionar estrutura de despesas (obrigatória)
+    formData.append('manifest[expenses_attributes][0][id]', '');
+    formData.append('manifest[expenses_attributes][0][manifest_id]', manifestId);
+    formData.append('manifest[expenses_attributes][0][value]', '0');
+    formData.append('manifest[expenses_attributes][0][accounting_planning_management_id]', '');
+    formData.append('manifest[expenses_attributes][0][date]', '');
+    formData.append('manifest[expenses_attributes][0][comments]', '');
+
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/closing/${manifestId}`,
+      formData,
+      'PATCH'
+    );
+
+    this.uiManager.setStatus(`${sequenceCode} fechado com sucesso`, 'success');
+    return response;
+}
+
+  /**
+   * Reabre manifesto (Closed → In_Transit)
+   */
+async reverseToInTransit(manifestId) {
+
+    const sequenceCode = await this.#getSequenceCodeWithFallback(manifestId);
+    this.uiManager.setStatus(`Estornando ${sequenceCode} para "Em Trânsito"...`, 'loading');
+
+    const apiUrls = this.config.getApiUrls();
+    const response = await this.apiService.postForm(
+      `${apiUrls.MANIFESTS.BASE_URL}/${manifestId}/reverse`,
+      new URLSearchParams()
+    );
+
+    this.uiManager.setStatus(`${sequenceCode} estornado para "Em Trânsito"`, 'success');
+    return response;
+ }
+}
+
+// MessageQueueManager.js
+class MessageQueueManager {
+  constructor(uiManager) {
+    this.uiManager = uiManager;
+    this.queue = [];
+    this.currentMessage = null;
+    this.subscribers = new Set();
+    this.paused = false;
+    this.clearTimeoutId = null;
+  }
+
+  push(message, type, options = {}) {
+    const msg = {
+      id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+      message,
+      type,
+      priority: options.priority || 0,
+      persist: options.persist || false,
+      createdAt: Date.now(),
+      duration: options.duration // Duração personalizada se fornecida
+    };
+
+    if (!this.isDuplicate(msg)) {
+      this.insertSorted(msg);
+      this.processQueue();
+    }
+  }
+
+  insertSorted(msg) {
+    const index = this.queue.findIndex(
+      m => m.priority < msg.priority || 
+          (m.priority === msg.priority && m.createdAt > msg.createdAt)
+    );
+    
+    if (index === -1) this.queue.push(msg);
+    else this.queue.splice(index, 0, msg);
+  }
+
+  isDuplicate(msg) {
+    return this.queue.some(m =>
+      m.message === msg.message &&
+      m.type === msg.type &&
+      Date.now() - m.createdAt < 10000
+    );
+  }
+
+  clearStatus() {
+    if (this.clearTimeoutId) {
+      clearTimeout(this.clearTimeoutId);
+      this.clearTimeoutId = null;
+    }
+    // this.uiManager.clearStatus();
+  }
+
+  async processQueue() {
+    if (this.paused || this.currentMessage || this.queue.length === 0) return;
+
+    this.currentMessage = this.queue.shift();
+    
+    // Limpa o status antes de mostrar nova mensagem
+    this.clearStatus();
+    
+    // Exibe a mensagem
+    this.uiManager.setStatus(this.currentMessage.message, this.currentMessage.type);
+    this.subscribers.forEach(sub => sub(this.currentMessage));
+
+    if (!this.currentMessage.persist) {
+      const duration = this.calculateDisplayTime(this.currentMessage);
+      this.clearTimeoutId = setTimeout(() => {
+        this.currentMessage = null;
+        this.clearStatus();
+        this.processQueue();
+      }, duration);
+    }
+  }
+
+calculateDisplayTime(msg) {
+  // 1. Defina as durações base de forma consistente
+  const baseDurations = {
+    error: CONFIG.UI.DELAY_MS_ERROR,    // 3s para erros
+    warning: CONFIG.UI.DELAY_MS,  // 2s para avisos
+    success: CONFIG.UI.DELAY_MS,  // 2s para sucesso
+    loading: CONFIG.UI.DELAY_MS_INFO,  // 2.5s para carregamentos
+    info: CONFIG.UI.DELAY_MS_INFO,  // 2.5s para carregamentos
+    default: CONFIG.UI.DELAY_MS   // 2s padrão
+  };
+
+  // 2. Se a mensagem tiver duração definida, use-a
+  if (msg.duration !== undefined) return msg.duration;
+  
+  // 3. Obtenha o tempo base conforme o tipo de mensagem
+  const baseTime = baseDurations[msg.type] || baseDurations.default;
+  
+  // 4. Calcule o fator de comprimento (0.5 a 4)
+  const lengthFactor = Math.min(Math.max(msg.message.length / 50, 0.5), 4);
+  
+  // 5. Calcule o fator de prioridade (1 a 1.6 para prioridades 0-2)
+  const priorityFactor = 1 + (msg.priority * 0.3);
+  
+  // 6. Calcule e retorne o tempo final (arredondado para baixo)
+  return Math.floor(baseTime * lengthFactor * priorityFactor);
+}
+
+  next() {
+    if (this.currentMessage) {
+      clearTimeout(this.clearTimeoutId);
+      this.currentMessage = null;
+      this.clearStatus();
+      this.processQueue();
+    }
+  }
+
+  pause() { 
+    this.paused = true;
+    if (this.clearTimeoutId) clearTimeout(this.clearTimeoutId);
+  }
+
+  resume() { 
+    this.paused = false; 
+    if (!this.currentMessage) this.processQueue();
+  }
+
+  // Novo método para limpeza completa
+  flush() {
+    this.queue = [];
+    this.next();
+  }
+}
+
+// =============================================
+// MAIN
+// =============================================
+(function() {
+  'use strict';
+
+  // Verifica se o usuário já fechou a mensagem anteriormente
+  if (getCookie('esl_warning_closed') === 'true') {
+    // return;
+  }
+
+  if (!isAuthorizedDomain()) {
+    console.warn('Acesso não autorizado: Este script só pode ser executado em domínios ESL Cloud');
+    showDomainWarningMessage();
+    return;
+  }
+
+  try {
+    if (localStorage.getItem('console-history')?.length > 100000) {
+      localStorage.removeItem('console-history');
+    }
+  } catch (e) {
+    console.warn('Não foi possível limpar o histórico:', e);
+  }
+
+  // Inicializa serviços
+  const apiService = new ApiService(CONFIG);
+  const manifestProcessor = new ManifestProcessor(CONFIG, apiService);
+  const uiManager = new UIManager(CONFIG);
+  const statusManager = new ManifestStatusManager(CONFIG, apiService, uiManager);
+  const messageManager = new MessageQueueManager(uiManager);
+
+  // Cria e inicializa o painel principal
+  const panelManager = new PanelManager(
+    CONFIG,
+    apiService,
+    manifestProcessor,
+    uiManager,
+    statusManager,
+  );
+
+  function initPanel() {
+    if (typeof window !== 'undefined' && document.body) {
+      panelManager.init();
+    }
+  }
+
+  // Inicializa quando o DOM estiver pronto
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(initPanel, 0);
+  } else {
+    document.addEventListener('DOMContentLoaded', initPanel);
+  }
+
+  window.initUnifiedPanel = initPanel;
+})();
+    </script>
+</body>
+</html>
