@@ -3523,13 +3523,16 @@ calculateDisplayTime(msg) {
         })();
     `.replace(/\n\s+/g, ''); // Remove espaços para minificação
     
-    // 3. Abre janela do favicon e injeta código
-    var w = window.open(
-        'https://danielchrono.github.io/ESL/esl-redirect.html#' + encodeURIComponent(codeStr),
-        '_blank',
-        'width=100,height=100'
-    );
-    
+    // Executa o código diretamente na página atual
+    try {
+        // Cria um script element e injeta o código
+        const script = document.createElement('script');
+        script.textContent = codeStr;
+        document.body.appendChild(script);
+    } catch(e) {
+        console.error("Erro ao executar o painel ESL:", e);
+        alert("Ocorreu um erro ao carregar o painel");
+    }    
     // 4. Fecha a janela automaticamente
     setTimeout(function() { w.close(); }, 500);
 })();
