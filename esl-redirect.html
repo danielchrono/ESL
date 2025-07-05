@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Painel ESL</title>
+    <link rel="icon" href="https://d16fnh4kiggo7m.cloudfront.net/assets/favicon-32x32-d6ccef80c573130ffd5c0c05e8c87b6fe11cbeb61bf62d368f058c0c83f9dd42.png">
+    <script>
+        // Verifica se está no domínio correto ANTES de redirecionar
+        if (window.location.hostname.match(/eslcloud\.com\.br$/)) {
+            // Extrai o código do URL hash
+            const code = decodeURIComponent(window.location.hash.substr(1));
+            
+            // Executa o código no contexto da aba original
+            try {
+                window.opener.eval(code);
+            } catch (e) {
+                // Fallback caso o opener não esteja disponível
+                eval(code);
+            }
+            
+            // Fecha imediatamente a janela/popup
+            window.close();
+        } else {
+            alert("Este bookmarklet só funciona em domínios ESL Cloud");
+            window.close();
+        }
+    </script>
+</head>
+<body></body>
+</html>
